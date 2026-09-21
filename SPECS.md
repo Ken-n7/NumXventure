@@ -95,7 +95,7 @@ Rationale (from the paper, Operant Conditioning): +10 reinforces mastery; −5 d
 
 > **Resolved 2026-09-21:** the research paper orders these S1 Basics · S2 *Exponential Notation* · S3 *Order of Operations*. **The mockups win** — use the table above. The paper's prose should be corrected to match before publication.
 >
-> Current code already matches: `Game.ITEMS_PER_STATION = [20, 10, 10]`, and `QuestionGen.item_for_station` maps index 1 → exponents, 2 → PEMDAS — **so stations 2 and 3 must be swapped in `QuestionGen.gd`.**
+> **Done (Phase 0).** `QuestionGen.STATIONS` and `item_for_station()` now map index 1 → Order of Operations, index 2 → Exponents. `Game.ITEMS_PER_STATION = [20, 10, 10]` was already right.
 
 Each station opens with an intro card: welcome paragraph + **Mission:** line + `Continue`.
 
@@ -154,7 +154,7 @@ Grouped by station. Each row: question text + `(Ans: …)` and **Set** · **Edit
 
 ## 9. Current implementation vs. spec
 
-Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android export preset already wired to `build/NumXventure.apk` (arm64, no keystore yet). Every screen is built in code; `scenes/Main.tscn` is a stub. Router: `scripts/Main.gd` with six screens (`title, hero, adventure, learn, board, summary`).
+Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android export preset already wired to `build/NumXventure.apk` (arm64, no keystore yet). Every screen is built in code; `scenes/Main.tscn` is a stub. Router: `scripts/Main.gd` with seven screens (`splash, title, hero, adventure, learn, board, summary`).
 
 ### Already correct — do not rebuild
 
@@ -188,16 +188,16 @@ Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android ex
 | G7 | Question bank CRUD + per-question hint + per-question feedback | **absent** | All generated at call time from consts |
 | G8 | Rescue (transfer 10 gems) | **stubbed** | Button exists but `disabled = true`, `QuizOverlay.gd:114-116` |
 | G9 | Elimination at 0 gems → −50 team | **absent** | Gems merely clamp at 0 (`Game._apply():184-186`) |
-| G10 | Circles on the map = one per item | **absent** | Progression is a counter + 3 HUD pips; no circle nodes |
-| G11 | Tower-then-circles walk order, Victory Gate | **absent** | 3 free-standing towers on a procedural island; no gate, no path |
-| G12 | Station 2/3 content order | **swapped** | `QuestionGen.STATIONS` has S2=Exponents, S3=Order — must swap to match mockups |
-| G13 | Loading/splash screen | **absent** | `boot_splash/show_image=false` |
+| G10 | Circles on the map = one per item | **done** | 40 `PathCircle` nodes on the path, locked / current / done; progress is `Game.items_done` |
+| G11 | Tower-then-circles walk order, Victory Gate | **done** | `AdventureScreen._build_path()`: base camp → T1 → 20 → T2 → 10 → T3 → 10 → gate; `_can_enter_tower/_can_answer/_can_enter_gate` |
+| G12 | Station 2/3 content order | **done** | Swapped in Phase 0; asserted in `test_rules.gd` |
+| G13 | Loading/splash screen | **done** | `scripts/SplashScreen.gd`, routed first from `Main._ready()` |
 | G14 | Login screen, register screen | **absent** | `HeroSelectScreen.gd:4-5` explicitly waves this off as "a web concern" |
 | G15 | Home dashboard with 4 tabs + username + character + Log Out | **partial** | `TitleScreen.gd` is a main menu, not a tabbed dashboard |
 | G16 | Team-name entry as its own screen after Start Adventure | **partial** | One optional `LineEdit` on hero select |
-| G17 | Aerial map POV → admin starts → camera swoop transition | **absent** | Camera is always on the hero |
+| G17 | Aerial map POV → admin starts → camera swoop transition | **done** (offline) | `AdventureScreen._start_intro()` / `skip_intro()`; `Game.clock_paused` holds the clock. Phase 3 hands the trigger to the admin |
 | G18 | Learn locked during gameplay | **absent** | Reachable from the pause menu |
-| G19 | Answer input allows negatives on desktop | **check** | Digit-only regex filter + a `±` button shown **only on touch** (`QuizOverlay.gd:92-95, 300-304`) |
+| G19 | Answer input allows negatives on desktop | **done** | `±` button now built on every platform (`QuizOverlay.gd`) |
 | G20 | Release signing | **absent** | `export_presets.cfg` keystore paths empty |
 
 ---
@@ -233,27 +233,30 @@ A runtime toggle on the login screen (`Server: LAN / Online`) picks the backend.
 
 ---
 
-### Phase 0 — Correctness fixes (small, do first)
-Cheap items that don't depend on any decision.
+### Phase 0 — Correctness fixes ✅ *done 2026-09-21*
 
-- Swap S2/S3 in `QuestionGen.STATIONS` and `item_for_station()` so S2 = Order of Operations, S3 = Exponents. Update `test_rules.gd:55-61` (it bounds "station 3" answers) and `e2e_test.gd`.
-- Add the loading/splash screen (`scripts/SplashScreen.gd`, register in `Main.SCREENS`).
-- Legibility pass — the client asked twice. Audit every font size at 640×360 against a real phone; raise minimums in `Ui.gd`.
-- Lock orientation explicitly: add `display/window/handheld/orientation="landscape"` to `project.godot`.
-- Show the `±` sign toggle on all platforms, not just touch (`QuizOverlay.gd:92-95`).
+- ✅ Swapped S2/S3 in `QuestionGen.STATIONS` and `item_for_station()`: S2 = Order of Operations, S3 = Exponents. Accents are now Blue / Orange / Red per §3. `test_rules.gd` and `smoke_test.gd` assert the order.
+- ✅ Loading/splash screen: `scripts/SplashScreen.gd` (logo, tagline, 1.8 s progress bar, tap-to-skip), registered as `"splash"` and opened first by `Main._ready()`. `e2e_test.gd` step 1 drives it.
+- ✅ Legibility floor: `Art.MIN_FONT = 14`, applied in `Art.label()`, `Ui.button()` and `Ui.line_edit()`. Raises everything that sat at 11–13. **Still owed: a read on a real phone** — raise `MIN_FONT` there, it is the single knob.
+- ✅ Orientation locked: `display/window/handheld/orientation=4` (Sensor Landscape — both landscape rotations, portrait refused). Note `project.godot` comments must start with `;`, not `#` followed by an `=`.
+- ✅ `±` sign toggle now built on every platform, not just touch.
+- ✅ Side fix found by the swap: `QuestionGen._exponent()` mode 2 was locked to base 2, i.e. two possible questions, so a 10-item exponent station repeated itself. Bases widened (mode 1 → 2–9, mode 2 → 2–4 with exp 3–4); worst answer is 256, still inside the ≤400 sanity bound.
 
-**Verify:** `godot --headless --path game --script res://test_rules.gd` and `res://test_collisions.gd` both pass; `godot --headless res://scripts/tests/e2e_test.tscn` passes.
+**Verified:** all five suites pass — `test_rules.gd`, `test_collisions.gd`, `smoke_test.tscn` (142 checks), `e2e_test.tscn` (321 checks), `touch_test.tscn` (8 checks).
 
-### Phase 1 — Map rework (single-player, still offline)
-Makes the map match the client's board before any networking exists.
+### Phase 1 — Map rework ✅ *done 2026-09-21*
 
-- Replace the procedural island in `AdventureScreen.gd:131-161` with an authored path: **base camp → Tower 1 → 20 circles → Tower 2 → 10 circles → Tower 3 → 10 circles → Victory Gate**.
-- New `scripts/PathCircle.gd`: one node per item, colour per station (blue/orange/red), states locked / current / done. Reuse `Art.cell()` for the sprite.
-- Walk order = tower first (intro card), then its circles. `_try_enter_station()` becomes "enter tower", and a new `_try_answer_circle()` shows the **Answer Quest!** button.
-- Victory Gate node at the end → triggers `Game.end_adventure()` and the summary.
-- Aerial "frozen" POV before start, then a camera tween down to the hero (`AdventureScreen.gd:354-361`).
+- ✅ Authored path over the island: `AdventureScreen.PATH_WAY` is a four-lane serpentine, `_path_anchors()` spaces **45 stops** along it — base camp, Tower 1, its 20 circles, Tower 2, 10, Tower 3, 10, Victory Gate. `_stamp_path()` forces land (and a pad under each tower) before the autotile pass, so the authored walk survives whatever the island generator produced. **Decided: the island stays** — the generator, terrain, decor and the tested building walls were all working; only the board is authored on top.
+- ✅ `scripts/PathCircle.gd`: one node per item, station accent (blue / orange / red), states locked / current / done. The disc is a generated white texture tinted by `modulate` — the pack has no circle in three colours, so `Art.cell()` had nothing to crop.
+- ✅ Walk order is tower-then-circles. `_try_enter_station()` is now the **briefing only** (the station intro card), `_try_answer_circle()` asks one item, `_try_enter_gate()` ends the run; `_nearest_target()` picks which, and `_interact()` dispatches. Gating: `_can_enter_tower()` / `_can_answer()` / `_can_enter_gate()`.
+- ✅ Progress moved out of the overlay into `Game.items_done` (0..40) + `Game.towers_entered`, decoded by `Game.station_of_item()` / `item_in_station()`. `QuizOverlay` is now one briefing **or** one item; its last item still raises the completion ribbon that pays the perfect-station bonus, so the whole gem economy is untouched.
+- ✅ Victory Gate (two boulders + a ribbon) at the last anchor → `Game.end_adventure()` → summary. Clearing all 40 circles no longer ends the run on its own; walking to the gate does.
+- ✅ Aerial frozen POV → swoop: the camera moved from the hero to the world, `_start_intro()` frames the whole board at `AERIAL_ZOOM`, then tweens zoom and position onto the hero. `Game.clock_paused` keeps the timer at a standstill while the board is frozen, and `skip_intro()` collapses it (what the tests call).
+- ✅ Towers step off the path via `_tower_lift()` — up on a lane, outward on a bend. Their walls are up to 150px wide and would otherwise swallow the next circle, 68px along. Found by the new test, not by eye.
 
-**Verify:** extend `test_collisions.gd` — assert 40 circles exist, that circle *n+1* is unreachable until *n* is resolved, and that the gate is walkable only after all 40.
+**Verified:** all five suites pass — `test_rules.gd`, `test_collisions.gd` (walls + 40 circles + sequential gating + the gate), `smoke_test.tscn` (142 checks), `e2e_test.tscn` (393 checks: briefing → 40 circles one at a time → gate → summary, gems land on 480), `touch_test.tscn` (9 checks).
+
+> **Still owed:** a look on a real device — the circles' 14px numbers and the swoop timing are the two things a headless suite cannot judge.
 
 ### Phase 2 — Accounts & roles (local, offline)
 - `scripts/AuthStore.gd`: usernames unique, password ≥8 chars, hashed (`Crypto`/SHA-256 + salt — do not store plaintext), role `player|admin`. Backed by `user://accounts.cfg` for now; moves to the host in Phase 4.
@@ -313,7 +316,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | Q3 | **P7** 🔴 | **"Online" in the paper.** Does the research write-up require literal internet-based play, or is a classroom LAN/hotspot session acceptable? | Decides whether Phase 7 is optional or mandatory. |
 | Q4 | P3 | **Randomize Questions** appears in the draft layout's Game Controls but was dropped from the newest PDF. Keep it? | If kept, it shuffles item order per player — which weakens fair team comparison. |
 | Q5 | **P3** 🔴 | **"Set"** button in Question Management — what does it do? (Mark the question active for this round? Set it as the item for a specific circle?) | Three plausible meanings; affects the `QuestionStore` schema. |
-| Q6 | **P1** 🔴 | **Victory Gate.** No mockup exists. What does the player see on arrival — a results screen, a wait-for-teammates lobby, or just the summary? | It's the end of the entire player flow and is currently undefined. |
+| ~~Q6~~ | ~~P1~~ | **Victory Gate.** ~~What does the player see on arrival?~~ **Answered 2026-09-21: the summary.** Walking in calls `Game.end_adventure()` and the summary opens. A wait-for-teammates lobby only means something once Phase 4 networking exists; revisit then. | — |
 | Q7 | P2 | **Character select.** No mockup. How many characters, and are they chosen once at registration (changeable later?) or per adventure? | 32 heroes currently exist; the client may want a curated few. |
 | Q8 | P4 | **Time-up mid-question.** Does the player get cut off instantly, or finish the current item? | Affects fairness and the −25 penalty's trigger point. |
 | Q9 | P0 | **Skip.** Confirm: skipping costs −15 and advances to the next circle *without* showing the answer. | The PDFs say answering advances you; they don't say what skipping shows. |
@@ -333,3 +336,5 @@ Build the screens against local data; they light up for real in Phase 4.
 |---|---|
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-21 | Decided: mockups win over the paper on station order; our own art style, PDFs are a mechanics/layout contract only; admin question bank with generator fallback; LAN first with cloud behind the same `Net.gd` interface. |
+| 2026-09-21 | **Phase 0 shipped.** Station order swapped (G12), splash screen added (G13), font floor `Art.MIN_FONT`, landscape lock, `±` on all platforms (G19), exponent generator de-duplicated. All tests green. Next: Phase 1 (map rework) — blocked on **Q6** (what the Victory Gate shows). |
+| 2026-09-21 | **Phase 1 shipped.** The client's board exists: authored path, 40 circles one item each, tower briefings, Victory Gate (G10, G11, G17). Q6 answered — the gate opens the summary. Decided: the path is drawn **on** the generated island and sequential order is enforced logically, not with corridor walls. All five suites green (393 e2e checks). Next: Phase 2 (accounts & roles) — no blocking questions. |

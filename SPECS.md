@@ -353,6 +353,15 @@ progression either — the sequential rule lived only in `_can_answer()`.
   highland. The three tilemap colours are near-identical greens, so there is no
   free biome swap — the dressing carries the difference. The rubber duck is gone:
   scaled up to a world this size it put half a dozen bath toys on dry grass.
+- ✅ **Props arrive in patches, not as noise.** One roll picks *what* grows at a
+  spot, then a handful of that one kind grows around it (`_plant_patch()` out to
+  two rings, ~45% of the cells skipped so a wood is not a hedge). `_plantable()`
+  is the single rule for where anything may stand: this island's ground, inland of
+  `_beach`, off `_trail` (the three-cell corridor `_stamp_path()` records, which is
+  what makes the walk read as a *road* through the trees), off `_station_rects`,
+  and not on a cell another prop already took. Counts went up because they now
+  count props rather than rolls. One fixed seed — the board is the same every run,
+  which is the point: there is nothing to win from a different mess each time.
 - ✅ **Tap a circle** for a card: which item, which station, its state, an X, and
   **Answer Quest!** only within `INTERACT_RADIUS` — so "walk to the circle" holds.
   E / GO still goes straight to the question, the fast path for forty items.
@@ -464,6 +473,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Per feedback, the art split in two: **keeps** are one building each (`BUILDINGS` — Blue Monastery / Yellow Archery / **Red Barracks**), **circles** are all towers in the station's livery (`CIRCLE_BUILDINGS` — Blue / Yellow / Red Tower). Each keep still has its two flanking houses. |
 | 2026-09-22 | `_stamp_path()` was relabelling `_island_of` for cells that were *already* land, so the camp trail's run across island 1 would have dressed it with the camp's props. It now only claims ground the trail invents. Station signage joined the decor keep-out set — a tree was being planted through the topic line. |
 | 2026-09-22 | **`tools/map_shot.gd`**: `godot --path game --script res://tools/map_shot.gd -- <out dir>` writes PNGs of the whole board and of the spots worth eyeballing. Windowed, not headless — it needs a GL context. Dev tool, never loaded by the game. |
+| 2026-09-22 | Decor pass rewritten: props grow in **patches** of one kind and keep off the road corridor, the shore, the stations and each other (`_plantable()`, `_plant_patch()`, `_trail`, `_taken`). Same fixed seed, so the board does not change run to run. Fixes the loose boulder that stood in the barricade line looking solid and was not — the line's keep-out grew a tile, and nothing plants near it now. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

@@ -156,7 +156,7 @@ Grouped by station. Each row: question text + `(Ans: …)` and **Set** · **Edit
 
 ### Project settings
 
-The durable record of the non-default values in `game/project.godot`. It lives here
+The durable record of the settings `game/project.godot` depends on. It lives here
 because Godot rewrites that file whenever any setting changes, and **its writer drops
 every comment**, so anything explained only in the file itself is lost the first time
 someone touches Project Settings.
@@ -167,9 +167,16 @@ someone touches Project Settings.
 | `display/window/handheld/orientation` | `4` | Sensor Landscape — both landscape rotations, portrait locked out. |
 | `display/window/size/viewport_width/height` | `640` × `360` | The canvas every screen is laid out against; `window_*_override` is 2× that for desktop runs. |
 | `display/window/stretch/mode` | `canvas_items` | Scales the UI with the window instead of the viewport, so text stays crisp. |
+| `display/window/stretch/aspect` † | `keep` | The world is deliberately 96×54 tiles = 3072×1728, exactly 16:9, so `_aerial_zoom()` frames the whole board in one screen. `expand` would hand wider devices extra viewport the aerial framing and the HUD anchors do not expect; `keep` letterboxes instead. |
+| `input_devices/pointing/emulate_mouse_from_touch` † | `true` | Every menu, quiz and pause button is a Godot `Button` (`Ui.button()`), and Controls do not handle `InputEventScreenTouch` themselves — without emulation they are dead on a phone. The joystick and GO/MENU deliberately read *raw* touch instead (`Joystick.gd`, `TouchScreenButton`) so steering and pressing GO work on separate fingers, so turning this off would leave those two working and silently kill everything else. |
 | `rendering/.../default_texture_filter` | `0` (nearest) | Pixel art — bilinear filtering blurs every sprite. |
 | `renderer/rendering_method(.mobile)` | `gl_compatibility` | Target devices are low-end Android; Forward+ is not an option. |
 | `gui/theme/custom_font` | `PixelifySans.ttf` | Project-wide font. `Art.apply_font_fallback()` attaches DejaVu for the glyphs it lacks. |
+
+† These two already match Godot's defaults, so the writer omits them and they will
+vanish from `project.godot` the next time a setting changes. That is harmless — the
+behaviour is unchanged — but they are load-bearing, so they are recorded here. If a
+future Godot release changes either default, set them explicitly again.
 
 > **Never use `#` for comments in `project.godot`.** Godot's config parser does not
 > recognise it: it folds the `#` line *and the key beneath it* into a single garbage

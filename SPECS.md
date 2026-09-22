@@ -390,6 +390,11 @@ Build the screens against local data; they light up for real in Phase 4.
 
 | Date | Change |
 |---|---|
+| 2026-09-22 | Ring marker deleted: the tower **is** the interactable, and a bobbing **"!"** over the hero says when pressing E/GO would actually do something (station keeps and the Victory Gate too, not just circles). No "current" marker any more — identical towers, the floating number is the progress cue. Taps now aim at the tower, not the bare grass the ring used to sit on. `_can_act_on()` is the one rule, shared by the "!" and the prompt line. |
+| 2026-09-22 | Every question circle is now a `Blue_Tower` sprite tinted per station (was a generated flat disc), full building scale per the client's call. `_build_path()`'s decor keep-out box resized to the tower's real footprint. |
+| 2026-09-22 | Simplified per feedback: towers no longer dim when locked -- full brightness in every state. State is just the item number floating above the tower (constant color, present until done, then gone) plus the pulsing ring underfoot while it's the current item. Locked towers stay walkable and interactable; walking up and answering out of order already gave "finish X first" (`_try_answer_circle()`), unchanged. |
+| 2026-09-22 | Per feedback: circles use each station's *own* building, no tint (`Blue_Tower`/`Yellow_Archery`/`Red_House1`) -- multiply-tinting one shared asset was muddying stations 2/3. Circles are now also solid with a doorstep, matching the 3 station outposts, via the same `_tower_lift()` island-aware offset (a fixed-side offset blocked the trail on station 2's tighter island -- flood-fill reachability caught it, same bug class the original towers hit). |
+| 2026-09-22 | Victory Gate is now `Red_Castle` (was two boulders + a ribbon). Freed it up by stepping station 3's tower down to `Red_House1` (the red livery has no second castle-scale asset). |
 | 2026-09-22 | Client cut item counts to **8/3/3** (14 total, was 20/10/10). `Game.ITEMS_PER_STATION`/`TOTAL_ITEMS` updated; map, gating and tests are parametric off those two constants so nothing else changed. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |

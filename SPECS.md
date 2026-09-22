@@ -48,7 +48,7 @@ Home → Start Adventure → enter Team Name → Adventure Map (far/aerial POV, 
 **Team Name doubles as a join code.** The admin generates team names in Game Controls; each player types the one they were given. That is how membership is resolved — the winner is a *team*, never a player.
 
 ### Map
-One continuous path: base camp → Tower 1 → 20 circles → Tower 2 → circles → Tower 3 → circles → Victory Gate. Circle colour per station (blue / orange / red).
+One continuous path: base camp → Tower 1 → 8 circles → Tower 2 → 3 circles → Tower 3 → 3 circles → Victory Gate. Circle colour per station (blue / orange / red).
 
 **One circle = one item.** Strictly sequential — a player cannot reach circle *n+1* before resolving circle *n*. Item counts are fixed per station.
 
@@ -89,13 +89,15 @@ Rationale (from the paper, Operant Conditioning): +10 reinforces mastery; −5 d
 
 | # | Title (mockups) | Competency | Items |
 |---|---|---|---|
-| 1 | **Master the Basics!** | +, −, ×, ÷ of integers, incl. negative signs | **20** |
-| 2 | **Follow the Right Order!** | PEMDAS / GEMDAS order of operations | **10** |
-| 3 | **Power Up with Exponents!** | exponential notation, base & exponent | **10** |
+| 1 | **Master the Basics!** | +, −, ×, ÷ of integers, incl. negative signs | **8** |
+| 2 | **Follow the Right Order!** | PEMDAS / GEMDAS order of operations | **3** |
+| 3 | **Power Up with Exponents!** | exponential notation, base & exponent | **3** |
 
 > **Resolved 2026-09-21:** the research paper orders these S1 Basics · S2 *Exponential Notation* · S3 *Order of Operations*. **The mockups win** — use the table above. The paper's prose should be corrected to match before publication.
 >
-> **Done (Phase 0).** `QuestionGen.STATIONS` and `item_for_station()` now map index 1 → Order of Operations, index 2 → Exponents. `Game.ITEMS_PER_STATION = [20, 10, 10]` was already right.
+> **Done (Phase 0).** `QuestionGen.STATIONS` and `item_for_station()` now map index 1 → Order of Operations, index 2 → Exponents.
+>
+> **Changed 2026-09-22:** client cut item counts to 8/3/3 (14 total, was 20/10/10). `Game.ITEMS_PER_STATION = [8, 3, 3]`, `Game.TOTAL_ITEMS = 14`. Everything downstream — map circle count, tower/causeway spacing, the perfect-station bonus — reads off these two constants, so nothing else needed a code change.
 
 Each station opens with an intro card: welcome paragraph + **Mission:** line + `Continue`.
 
@@ -163,7 +165,7 @@ Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android ex
 | Whole gem economy, exact values | `scripts/Game.gd:12-18`, `mark_correct/mark_wrong/spend_hint/mark_skipped/finish_station` `:190-232` |
 | 50 start gems, +10/−5/−5/−15, perfect-station +10, −25 unfinished | same |
 | One hint per item | `Game.spend_hint()` + `item_used_hint`, reset in `begin_item()` |
-| Item counts 20/10/10 | `Game.ITEMS_PER_STATION:21` |
+| Item counts 8/3/3 | `Game.ITEMS_PER_STATION:21` |
 | Shared countdown timer, auto-end at zero | `Game.gd:113-118` |
 | Station intro card with Mission line | `QuizOverlay._show_intro():139-151` |
 | Question screen: prompt, Hint, Skip, answer input, Submit | `QuizOverlay.gd:56-136`, `_submit():184-198` |
@@ -188,7 +190,7 @@ Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android ex
 | G7 | Question bank CRUD + per-question hint + per-question feedback | **absent** | All generated at call time from consts |
 | G8 | Rescue (transfer 10 gems) | **stubbed** | Button exists but `disabled = true`, `QuizOverlay.gd:114-116` |
 | G9 | Elimination at 0 gems → −50 team | **absent** | Gems merely clamp at 0 (`Game._apply():184-186`) |
-| G10 | Circles on the map = one per item | **done** | 40 `PathCircle` nodes on the path, locked / current / done; progress is `Game.items_done` |
+| G10 | Circles on the map = one per item | **done** | 14 `PathCircle` nodes on the path, locked / current / done; progress is `Game.items_done` |
 | G11 | Tower-then-circles walk order, Victory Gate | **done** | `AdventureScreen._build_path()`: base camp → T1 → 20 → T2 → 10 → T3 → 10 → gate; `_can_enter_tower/_can_answer/_can_enter_gate` |
 | G12 | Station 2/3 content order | **done** | Swapped in Phase 0; asserted in `test_rules.gd` |
 | G13 | Loading/splash screen | **done** | `scripts/SplashScreen.gd`, routed first from `Main._ready()` |
@@ -388,6 +390,7 @@ Build the screens against local data; they light up for real in Phase 4.
 
 | Date | Change |
 |---|---|
+| 2026-09-22 | Client cut item counts to **8/3/3** (14 total, was 20/10/10). `Game.ITEMS_PER_STATION`/`TOTAL_ITEMS` updated; map, gating and tests are parametric off those two constants so nothing else changed. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

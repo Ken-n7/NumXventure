@@ -48,9 +48,11 @@ Home → Start Adventure → enter Team Name → Adventure Map (far/aerial POV, 
 **Team Name doubles as a join code.** The admin generates team names in Game Controls; each player types the one they were given. That is how membership is resolved — the winner is a *team*, never a player.
 
 ### Map
-One continuous path: base camp → Tower 1 → 8 circles → Tower 2 → 3 circles → Tower 3 → 3 circles → Victory Gate. Circle colour per station (blue / orange / red).
+One continuous path: base camp → Station 1 → 8 circles → Station 2 → 3 circles → Station 3 → 3 circles → Victory Gate. Circle colour per station (blue / orange / red).
 
-The base camp sits on its own small island at the map's right, joined to Station 1's island by a land bridge. Station 1's outpost stands on the headland where that bridge lands, and a giant knight holds the three-tile neck behind it — so the walk cannot begin before the first station has been entered.
+Each station's keep is its own building — **Blue Monastery**, **Yellow Archery**, **Red Barracks** — with two houses of the same livery either side. Every walk-up circle is a **Tower** in that station's livery, so a stop always reads as a stop and never as a keep.
+
+The base camp sits on its own small island at the map's right, joined to Station 1's island by a land bridge. Station 1's monastery stands on island 1's own ground where that bridge lands, and a **line of boulders** runs from shore to shore across the island just west of it, with a giant knight filling its one gap — so the walk cannot begin before the first station has been entered.
 
 **One circle = one item.** Strictly sequential — a player cannot reach circle *n+1* before resolving circle *n*. Item counts are fixed per station.
 
@@ -303,23 +305,28 @@ labels, and one undifferentiated blob of grass. Nothing in the geography express
 progression either — the sequential rule lived only in `_can_answer()`.
 
 - ✅ **The camp is its own island** (`ISLANDS[0]`), bottom **right**, joined to
-  Station 1's island by a **land bridge**: the camp trail's far anchor sits out over
-  the channel, so `_stamp_path()` lays the crossing under the walk and Tower 1's own
-  pad becomes the headland it lands on. Because Tower 1 and its circles no longer
-  share ground, `_station_island(st) = st` is gone; `_island_of_anchor(k)` derives
-  the island from the anchor index off `_stops_on()`, correct for towers and circles
-  alike. The flattened walk order is unchanged, so `_tower_anchors()`,
-  `_build_path()` and every gating predicate were untouched.
-- ✅ **The first gate is a body, not terrain.** `_stamp_neck()` joins that headland
-  to the island with a three-tile neck — stamped, not generated, because
-  `_island_index()` gives a shore ten cells wide and nothing can plug that — and a
-  **giant knight** (the guards' own `Warrior_Idle` sheet at 3× their scale) stands in
-  it as a `_solid` wall. The Station 1 briefing calls `_dismiss_knight()`: the wall
-  drops at once so the player can walk on, while he blackens and fades out.
+  Station 1's island by a **land bridge**: the camp trail runs over open water to
+  reach Station 1, so `_stamp_path()` lays the crossing under the walk. Because
+  Station 1 and its circles sit on different trails, `_station_island(st) = st` is
+  gone; `_island_of_anchor(k)` derives the trail from the anchor index off
+  `_stops_on()`, correct for keeps and circles alike. The flattened walk order is
+  unchanged, so `_tower_anchors()`, `_build_path()` and every gating predicate were
+  untouched. Station 1 itself stands well inside island 1 — its footprint and its
+  roof are checked against `_island_index()`, not against stamped ground, so no part
+  of the monastery hangs over the sea.
+- ✅ **The first gate is a body in a wall, not terrain.** `_build_barricade()` lays a
+  **line of boulders** across island 1 between the monastery and its first circle:
+  one `Rock%d.png` and one `_solid` rect per cell, stepping out from the road to the
+  sea on both sides, so there is no way round. A **giant knight** (the guards' own
+  `Warrior_Idle` sheet at 3× their scale) fills the two-cell gap the road runs
+  through. The Station 1 briefing calls `_dismiss_knight()`: his plug drops at once
+  so the player can walk on while he blackens and fades. The rocks stay — they are
+  laid on every build, briefed or not, and only the gap ever opens.
   **Why a knight and not a causeway here:** the crossing has to be walkable for the
-  station on the far side to be reachable at all, so the choke sits *between* Tower 1
-  and the rest of the island. `test_collisions.gd` proves it both ways — with him
-  posted no circle is reachable from camp; dismissed, Station 1's eight are.
+  station on the far side to be reachable at all, so the choke sits *between*
+  Station 1 and the rest of the island. `test_collisions.gd` proves it both ways —
+  with him posted no circle is reachable from camp; dismissed, Station 1's eight
+  are — and separately that both ends of the line run into water.
 - ✅ **Four islands** (`AdventureScreen.ISLANDS`), on a world grown
   from 44×30 to **96×54** — 3072×1728, deliberately 16:9 so the whole-board view
   fills the screen exactly.
@@ -329,10 +336,13 @@ progression either — the sequential rule lived only in `_can_answer()`.
   `open_causeway()` stamps the cells into `_land`, repaints the shoreline with
   `_retile()`, dries the same stones out and puffs dust. It fires from
   `_refresh_causeways()` the moment that station runs out of circles.
-  **Why islands and not a boulder:** a boulder on open ground can be walked
+  **Why islands and not a boulder:** *one* boulder on open ground can be walked
   around. This is enforced by the terrain, and `test_collisions.gd` proves it by
-  flood-filling from the base camp rather than trusting a flag.
-- ✅ **~208px between stops** (was 68), one authored trail per island (`TRAILS`).
+  flood-filling from the base camp rather than trusting a flag. (A whole line of
+  them, shore to shore, cannot be walked around either — that is the gate on island
+  1, where there is no channel to use.)
+- ✅ **~270px between stops at the tightest** (was 68), one authored trail per
+  island (`TRAILS`).
   ~65s of walking in a 600s adventure; `PLAYER_SPEED` is the knob if that is long.
 - ✅ **Stations are outposts**: the keep, two houses in its livery, two idle guards.
   Houses step outward until their footprint is clear of every anchor and are
@@ -450,6 +460,10 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | **Base camp is its own island**, and Tower 1 moved onto it as the camp's gatehouse. The causeway out of camp only rises once the Station 1 briefing is done, so the board cannot be walked at all before the first station. Four islands / four `TRAILS` now; `_station_island()` (one station = one island) replaced by `_island_of_anchor()`, since Tower 1 and its circles no longer share ground. Camp *dressing* is still the old fire + label — deferred. |
 | 2026-09-22 | **`config/quit_on_go_back=false` was never applying.** Godot's config parser does not treat `#` as a comment — it folds the `#` line and the key beneath it into one garbage quoted key — so the two `#` lines above it silently voided the setting, and Android's back button was quitting mid-run instead of opening the pause menu. Switched to `;`, which parses. Non-default settings are now recorded in §8 "Project settings", because Godot's writer drops every comment when a setting changes. |
 | 2026-09-22 | Per feedback, rearranged: camp island moved to the map's **right** (island 1 mirrored about x=0.5 to make room), the crossing became a walkable **land bridge**, and Tower 1 moved across it onto Station 1's own island. The gate is now a **giant knight** plugging a stamped three-tile neck behind the station, fading to black on the briefing (`_stamp_neck()`, `_post_knight()`, `_dismiss_knight()`). Net simplification downstream: `_find_causeways()` skips seam 0, so the causeway array means "the gate into station i+1" again and last round's `i == 0` special cases in `_refresh_causeways()`, the signage and the toast all reverted. |
+| 2026-09-22 | **Island 1 reworked.** Station 1's keep is the **Blue Monastery**, and it moved west off the headland onto island 1's own ground — its whole sprite box, roof included, is checked against `_island_index()`, so nothing hangs over water. The stamped three-tile neck is gone; `_build_barricade()` lays a **line of boulders** across the island instead, shore to shore, with the knight filling its two-cell gap. Station 1's eight circles shifted west to clear it (`TRAILS[1][0]`). Knobs: `BARRICADE_T`, `BARRICADE_GAP`, `ROCK_SCALE`. |
+| 2026-09-22 | Per feedback, the art split in two: **keeps** are one building each (`BUILDINGS` — Blue Monastery / Yellow Archery / **Red Barracks**), **circles** are all towers in the station's livery (`CIRCLE_BUILDINGS` — Blue / Yellow / Red Tower). Each keep still has its two flanking houses. |
+| 2026-09-22 | `_stamp_path()` was relabelling `_island_of` for cells that were *already* land, so the camp trail's run across island 1 would have dressed it with the camp's props. It now only claims ground the trail invents. Station signage joined the decor keep-out set — a tree was being planted through the topic line. |
+| 2026-09-22 | **`tools/map_shot.gd`**: `godot --path game --script res://tools/map_shot.gd -- <out dir>` writes PNGs of the whole board and of the spots worth eyeballing. Windowed, not headless — it needs a GL context. Dev tool, never loaded by the game. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

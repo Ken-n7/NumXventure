@@ -195,7 +195,7 @@ Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android ex
 | G14 | Login screen, register screen | **absent** | `HeroSelectScreen.gd:4-5` explicitly waves this off as "a web concern" |
 | G15 | Home dashboard with 4 tabs + username + character + Log Out | **partial** | `TitleScreen.gd` is a main menu, not a tabbed dashboard |
 | G16 | Team-name entry as its own screen after Start Adventure | **partial** | One optional `LineEdit` on hero select |
-| G17 | Aerial map POV → admin starts → camera swoop transition | **done** (offline) | `AdventureScreen._start_intro()` / `skip_intro()`; `Game.clock_paused` holds the clock. Phase 3 hands the trigger to the admin |
+| G17 | Aerial map POV → admin starts → camera swoop transition | **done** (offline) | `AdventureScreen._start_intro()` holds the board frozen with **no joystick** until a tap, click or interact press fires `_swoop()`; `Game.clock_paused` means the wait is free. That's the offline stand-in — Phase 3 routes the admin's Start Game into the same `_swoop()` call instead. The world is exactly 16:9 so `_aerial_zoom()` frames the whole board with no bars; what it cannot do is text — circle numbers and station signs are world-space and illegible at 0.208 |
 | G18 | Learn locked during gameplay | **absent** | Reachable from the pause menu |
 | G19 | Answer input allows negatives on desktop | **done** | `±` button now built on every platform (`QuizOverlay.gd`) |
 | G20 | Release signing | **absent** | `export_presets.cfg` keystore paths empty |
@@ -251,12 +251,66 @@ A runtime toggle on the login screen (`Server: LAN / Online`) picks the backend.
 - ✅ Walk order is tower-then-circles. `_try_enter_station()` is now the **briefing only** (the station intro card), `_try_answer_circle()` asks one item, `_try_enter_gate()` ends the run; `_nearest_target()` picks which, and `_interact()` dispatches. Gating: `_can_enter_tower()` / `_can_answer()` / `_can_enter_gate()`.
 - ✅ Progress moved out of the overlay into `Game.items_done` (0..40) + `Game.towers_entered`, decoded by `Game.station_of_item()` / `item_in_station()`. `QuizOverlay` is now one briefing **or** one item; its last item still raises the completion ribbon that pays the perfect-station bonus, so the whole gem economy is untouched.
 - ✅ Victory Gate (two boulders + a ribbon) at the last anchor → `Game.end_adventure()` → summary. Clearing all 40 circles no longer ends the run on its own; walking to the gate does.
-- ✅ Aerial frozen POV → swoop: the camera moved from the hero to the world, `_start_intro()` frames the whole board at `AERIAL_ZOOM`, then tweens zoom and position onto the hero. `Game.clock_paused` keeps the timer at a standstill while the board is frozen, and `skip_intro()` collapses it (what the tests call).
+- ✅ Aerial frozen POV → swoop: the camera moved from the hero to the world, `_start_intro()` frames the whole board at `AERIAL_ZOOM`, then `_swoop()` tweens zoom and position onto the hero over 0.9s. `Game.clock_paused` keeps the timer at a standstill while the board is frozen, and `skip_intro()` collapses it instantly (what the tests call).
+- ✅ **Fixed 2026-09-22:** the POV used to swoop off a 1.2s timer, so the one screen that answers the client's `Adventure Map` mockup was unviewable, and the touch pad stayed up through it — against *"Waray pa joystick, or anything if di pa start ang adventure"*, twice stated. The board now holds indefinitely, pad hidden, until a **tap anywhere** (or a click, or the interact key) fires `_swoop()` — no button sitting on top of the board it's asking you to look at. A first pass used a corner button instead; removed once tap-anywhere covered the same need without obstructing the view. Desktop has no pad, which is why no headless suite caught the original bug; `touch_test.gd` now simulates a real tap and asserts pad-hidden-while-frozen, the hint offered, and both restored after the swoop.
+- ✅ **Two bugs the real-tap test surfaced, both fixed:** `AdventureScreen`'s root `Control` defaulted to `MOUSE_FILTER_STOP`, silently swallowing every tap/click before `_unhandled_input()` ever saw it — the circle-inspect card (below) had never actually fired from a real click, only from a script calling it directly. And `_exit_tree()` unconditionally cleared `Game.clock_paused`; since `Main.open()` frees the old screen with a deferred `queue_free()`, restarting mid-adventure ran the old screen's cleanup *after* the new screen's fresh intro had already set the flag, silently un-pausing a board that still looked frozen. Now it only clears the flag if that dying screen was itself still frozen.
 - ✅ Towers step off the path via `_tower_lift()` — up on a lane, outward on a bend. Their walls are up to 150px wide and would otherwise swallow the next circle, 68px along. Found by the new test, not by eye.
 
 **Verified:** all five suites pass — `test_rules.gd`, `test_collisions.gd` (walls + 40 circles + sequential gating + the gate), `smoke_test.tscn` (142 checks), `e2e_test.tscn` (393 checks: briefing → 40 circles one at a time → gate → summary, gems land on 480), `touch_test.tscn` (9 checks).
 
 > **Still owed:** a look on a real device — the circles' 14px numbers and the swoop timing are the two things a headless suite cannot judge.
+
+#### Phase 1b — map redesign ✅ *done 2026-09-22*
+
+The first pass satisfied the contract but did not read as a game map: forty circles
+crammed 68px apart into one serpentine, a station that was one building and two
+labels, and one undifferentiated blob of grass. Nothing in the geography expressed
+progression either — the sequential rule lived only in `_can_answer()`.
+
+- ✅ **Three islands, one per station** (`AdventureScreen.ISLANDS`), on a world grown
+  from 44×30 to **96×54** — 3072×1728, deliberately 16:9 so the whole-board view
+  fills the screen exactly.
+- ✅ **Causeways as the gate.** `_find_causeways()` takes the water along the line
+  between two island centres: the shortest crossing, and the *only* one, since
+  everything either side is sea. Stepping stones and a sign mark it early;
+  `open_causeway()` stamps the cells into `_land`, repaints the shoreline with
+  `_retile()`, dries the same stones out and puffs dust. It fires from
+  `_refresh_causeways()` the moment that station runs out of circles.
+  **Why islands and not a boulder:** a boulder on open ground can be walked
+  around. This is enforced by the terrain, and `test_collisions.gd` proves it by
+  flood-filling from the base camp rather than trusting a flag.
+- ✅ **~208px between stops** (was 68), one authored trail per island (`TRAILS`).
+  ~65s of walking in a 600s adventure; `PLAYER_SPEED` is the knob if that is long.
+- ✅ **Stations are outposts**: the keep, two houses in its livery, two idle guards.
+  Houses step outward until their footprint is clear of every anchor and are
+  dropped if the island has no room — a wide keep plus a house otherwise reaches
+  the next circle 200px along, which is exactly what it did on Station 3 the first
+  time. Found by the test, not by eye.
+- ✅ **Props per island** (`ISLAND_PROPS`): wooded valley, stony quarry, bare
+  highland. The three tilemap colours are near-identical greens, so there is no
+  free biome swap — the dressing carries the difference. The rubber duck is gone:
+  scaled up to a world this size it put half a dozen bath toys on dry grass.
+- ✅ **Tap a circle** for a card: which item, which station, its state, an X, and
+  **Answer Quest!** only within `INTERACT_RADIUS` — so "walk to the circle" holds.
+  E / GO still goes straight to the question, the fast path for forty items.
+- ✅ `PLAY_ZOOM = 0.75` while walking, and a computed `_aerial_zoom()` with the
+  camera limits lifted (a visible rect wider than the limits gets shoved
+  off-centre, it is not letterboxed).
+- ✅ Side fix: the map prompt and the controls crib were anchored `CENTER_BOTTOM`
+  and then given a 640 width, so each box started at mid-screen and its centred
+  text hung off the right edge. Both are `*_WIDE` now. Only visible in a
+  screenshot, which is how it was found.
+
+**Verified:** all five suites pass — `test_rules`, `test_collisions` (walls, 40
+circles, sequential gating, **flood-fill reachability per island**, causeways shut
+then open), `smoke_test` (142), `e2e_test` (393), `touch_test` (14). Plus eleven
+screenshots off a real GL context: aerial, camp, each outpost, both causeway
+states, the card, the gate.
+
+> **Still owed:** region gating is a *visual* expression of the sequential rule the
+> PDFs already specify, not a new rule, so nothing is owed the client here. Next is
+> the stylized overview — the camera aerial frames the board correctly now, but
+> world-space text is unreadable at that zoom.
 
 ### Phase 2 — Accounts & roles (local, offline)
 - `scripts/AuthStore.gd`: usernames unique, password ≥8 chars, hashed (`Crypto`/SHA-256 + salt — do not store plaintext), role `player|admin`. Backed by `user://accounts.cfg` for now; moves to the host in Phase 4.
@@ -335,6 +389,8 @@ Build the screens against local data; they light up for real in Phase 4.
 | Date | Change |
 |---|---|
 | 2026-09-21 | Created from the three PDFs. |
+| 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
+| 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |
 | 2026-09-21 | Decided: mockups win over the paper on station order; our own art style, PDFs are a mechanics/layout contract only; admin question bank with generator fallback; LAN first with cloud behind the same `Net.gd` interface. |
 | 2026-09-21 | **Phase 0 shipped.** Station order swapped (G12), splash screen added (G13), font floor `Art.MIN_FONT`, landscape lock, `±` on all platforms (G19), exponent generator de-duplicated. All tests green. Next: Phase 1 (map rework) — blocked on **Q6** (what the Victory Gate shows). |
 | 2026-09-21 | **Phase 1 shipped.** The client's board exists: authored path, 40 circles one item each, tower briefings, Victory Gate (G10, G11, G17). Q6 answered — the gate opens the summary. Decided: the path is drawn **on** the generated island and sequential order is enforced logically, not with corridor walls. All five suites green (393 e2e checks). Next: Phase 2 (accounts & roles) — no blocking questions. |

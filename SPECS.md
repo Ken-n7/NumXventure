@@ -50,6 +50,8 @@ Home → Start Adventure → enter Team Name → Adventure Map (far/aerial POV, 
 ### Map
 One continuous path: base camp → Tower 1 → 8 circles → Tower 2 → 3 circles → Tower 3 → 3 circles → Victory Gate. Circle colour per station (blue / orange / red).
 
+The base camp sits on its own small island at the map's right, joined to Station 1's island by a land bridge. Station 1's outpost stands on the headland where that bridge lands, and a giant knight holds the three-tile neck behind it — so the walk cannot begin before the first station has been entered.
+
 **One circle = one item.** Strictly sequential — a player cannot reach circle *n+1* before resolving circle *n*. Item counts are fixed per station.
 
 ### Question screen
@@ -269,7 +271,25 @@ crammed 68px apart into one serpentine, a station that was one building and two
 labels, and one undifferentiated blob of grass. Nothing in the geography expressed
 progression either — the sequential rule lived only in `_can_answer()`.
 
-- ✅ **Three islands, one per station** (`AdventureScreen.ISLANDS`), on a world grown
+- ✅ **The camp is its own island** (`ISLANDS[0]`), bottom **right**, joined to
+  Station 1's island by a **land bridge**: the camp trail's far anchor sits out over
+  the channel, so `_stamp_path()` lays the crossing under the walk and Tower 1's own
+  pad becomes the headland it lands on. Because Tower 1 and its circles no longer
+  share ground, `_station_island(st) = st` is gone; `_island_of_anchor(k)` derives
+  the island from the anchor index off `_stops_on()`, correct for towers and circles
+  alike. The flattened walk order is unchanged, so `_tower_anchors()`,
+  `_build_path()` and every gating predicate were untouched.
+- ✅ **The first gate is a body, not terrain.** `_stamp_neck()` joins that headland
+  to the island with a three-tile neck — stamped, not generated, because
+  `_island_index()` gives a shore ten cells wide and nothing can plug that — and a
+  **giant knight** (the guards' own `Warrior_Idle` sheet at 3× their scale) stands in
+  it as a `_solid` wall. The Station 1 briefing calls `_dismiss_knight()`: the wall
+  drops at once so the player can walk on, while he blackens and fades out.
+  **Why a knight and not a causeway here:** the crossing has to be walkable for the
+  station on the far side to be reachable at all, so the choke sits *between* Tower 1
+  and the rest of the island. `test_collisions.gd` proves it both ways — with him
+  posted no circle is reachable from camp; dismissed, Station 1's eight are.
+- ✅ **Four islands** (`AdventureScreen.ISLANDS`), on a world grown
   from 44×30 to **96×54** — 3072×1728, deliberately 16:9 so the whole-board view
   fills the screen exactly.
 - ✅ **Causeways as the gate.** `_find_causeways()` takes the water along the line
@@ -396,6 +416,8 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Per feedback: circles use each station's *own* building, no tint (`Blue_Tower`/`Yellow_Archery`/`Red_House1`) -- multiply-tinting one shared asset was muddying stations 2/3. Circles are now also solid with a doorstep, matching the 3 station outposts, via the same `_tower_lift()` island-aware offset (a fixed-side offset blocked the trail on station 2's tighter island -- flood-fill reachability caught it, same bug class the original towers hit). |
 | 2026-09-22 | Victory Gate is now `Red_Castle` (was two boulders + a ribbon). Freed it up by stepping station 3's tower down to `Red_House1` (the red livery has no second castle-scale asset). |
 | 2026-09-22 | Client cut item counts to **8/3/3** (14 total, was 20/10/10). `Game.ITEMS_PER_STATION`/`TOTAL_ITEMS` updated; map, gating and tests are parametric off those two constants so nothing else changed. |
+| 2026-09-22 | **Base camp is its own island**, and Tower 1 moved onto it as the camp's gatehouse. The causeway out of camp only rises once the Station 1 briefing is done, so the board cannot be walked at all before the first station. Four islands / four `TRAILS` now; `_station_island()` (one station = one island) replaced by `_island_of_anchor()`, since Tower 1 and its circles no longer share ground. Camp *dressing* is still the old fire + label — deferred. |
+| 2026-09-22 | Per feedback, rearranged: camp island moved to the map's **right** (island 1 mirrored about x=0.5 to make room), the crossing became a walkable **land bridge**, and Tower 1 moved across it onto Station 1's own island. The gate is now a **giant knight** plugging a stamped three-tile neck behind the station, fading to black on the briefing (`_stamp_neck()`, `_post_knight()`, `_dismiss_knight()`). Net simplification downstream: `_find_causeways()` skips seam 0, so the causeway array means "the gate into station i+1" again and last round's `i == 0` special cases in `_refresh_causeways()`, the signage and the toast all reverted. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

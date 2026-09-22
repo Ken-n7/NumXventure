@@ -189,6 +189,30 @@ future Godot release changes either default, set them explicitly again.
 
 ---
 
+### Dev tools
+
+Two of them, both debug-build only and neither loaded by the game:
+
+- **`scripts/DevDrawer.gd`** — a drawer on the left edge of the Adventure map: a
+  handle, a parchment panel, and one button per row of its `TOOLS` table
+  (adding a tool is a line there plus a method). **Skip Station** resolves the
+  current station's remaining circles, briefs its tower and banks it, which is
+  what opens the next island — that is the one the later islands are tested
+  through, and `test_collisions.gd` proves it leaves the board exactly where
+  playing the questions would. The rest: **Teleport** to the next stop,
+  **Aerial** for the whole-board POV, **Open Gates**, **Fast Walk**, **Freeze**,
+  **+1:00**, **Show Walls** (draws every `_solid` rect), **End Run**.
+  `AdventureScreen` only builds it under `OS.is_debug_build()`, so the
+  `--export-debug` APK keeps it and a release export drops it with nothing to
+  strip by hand. The floating joystick owns the left half of the canvas and marks
+  those touches handled, so the drawer hands `Joystick.zone` back exactly the
+  strip it is using.
+- **`tools/map_shot.gd`** — `godot --path game --script res://tools/map_shot.gd
+  -- <out dir>` writes a PNG per entry in its `SHOTS` table. Windowed, not
+  headless: it needs a GL context. A shot can ask for `dismiss` (stand every
+  guard down), `drawer` (slide the dev drawer out) and `hold` (wait N frames),
+  which is how the *after* state of anything that animates gets photographed.
+
 ## 9. Current implementation vs. spec
 
 Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android export preset already wired to `build/NumXventure.apk` (arm64, no keystore yet). Every screen is built in code; `scenes/Main.tscn` is a stub. Router: `scripts/Main.gd` with seven screens (`splash, title, hero, adventure, learn, board, summary`).
@@ -496,6 +520,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Per feedback: widened the yard between Station 1 and the boulder line (`BARRICADE_T` 0.5 -> 0.55, circle 1 further west) and the knight now **walks** into it when briefed instead of fading out. `_knight_stand` is searched once by `_knight_rest()` -- toward the station, off the road, clear of the rocks and the buildings -- and reserved against the decor pass so he does not step down into a tree. `map_shot.gd` grew `dismiss`/`hold` so the after state can be photographed. |
 | 2026-09-22 | Knight walks on `Warrior_Run` instead of sliding in his idle pose (idle + walk on one `AnimatedSprite2D`, facing set from the direction of travel), and the decor keep-outs grew to cover the gap, his walk and his spot, plus two tiles either side of the boulder line -- trees were standing in all four. |
 | 2026-09-22 | Island 2 is reached by a **land bridge with a guard**, like island 1, instead of a causeway that rises. The hard-coded knight became `BARRICADES`, a list of gates (station, what opens it, where the line stands); `BRIDGED_SEAMS` says which crossings are bridges, `_stamp_path()` lays ground under the hop from one trail to the next where they are, and each causeway now carries its own `seam` so one being skipped does not shift what the others mean. Station 2's guard wears its livery, carries a `Clear Station 1 to pass` sign, and steps aside to the outpost when Station 1 runs out of circles. Guards now pick a stand-down spot furthest-first toward their own station, and clear the signage with their whole body rather than just the cell they stand on. |
+| 2026-09-22 | **Dev drawer** (`scripts/DevDrawer.gd`), debug builds only: a slide-out panel on the left of the Adventure map with Skip Station, Teleport, Aerial, Open Gates, Fast Walk, Freeze, +1:00, Show Walls and End Run. `TOOLS` is the table — one line adds a button. Skip Station is what the later islands are tested through, so `test_collisions.gd` now walks the whole gating ladder with it as well. The joystick's zone shrinks to the strip the drawer is not using, since it claims the left half of the canvas and marks those touches handled. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

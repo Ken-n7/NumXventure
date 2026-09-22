@@ -320,8 +320,13 @@ progression either — the sequential rule lived only in `_can_answer()`.
   sea on both sides, so there is no way round. A **giant knight** (the guards' own
   `Warrior_Idle` sheet at 3× their scale) fills the two-cell gap the road runs
   through. The Station 1 briefing calls `_dismiss_knight()`: his plug drops at once
-  so the player can walk on while he blackens and fades. The rocks stay — they are
-  laid on every build, briefed or not, and only the gap ever opens.
+  so the player can walk on, and he **walks out of the gap** to `_knight_stand` —
+  open ground in the yard between the line and the monastery, found by
+  `_knight_rest()` and reserved before the decor pass so nothing grows in it. He
+  does not fade: the gate was a man, and a man who has let you past is still
+  standing there. The rocks stay too — laid on every build, briefed or not, and
+  only the gap ever opens. A restart that had already briefed posts him at that
+  same spot as scenery, never as `_knight`, which means "the blocker".
   **Why a knight and not a causeway here:** the crossing has to be walkable for the
   station on the far side to be reachable at all, so the choke sits *between*
   Station 1 and the rest of the island. `test_collisions.gd` proves it both ways —
@@ -474,6 +479,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | `_stamp_path()` was relabelling `_island_of` for cells that were *already* land, so the camp trail's run across island 1 would have dressed it with the camp's props. It now only claims ground the trail invents. Station signage joined the decor keep-out set — a tree was being planted through the topic line. |
 | 2026-09-22 | **`tools/map_shot.gd`**: `godot --path game --script res://tools/map_shot.gd -- <out dir>` writes PNGs of the whole board and of the spots worth eyeballing. Windowed, not headless — it needs a GL context. Dev tool, never loaded by the game. |
 | 2026-09-22 | Decor pass rewritten: props grow in **patches** of one kind and keep off the road corridor, the shore, the stations and each other (`_plantable()`, `_plant_patch()`, `_trail`, `_taken`). Same fixed seed, so the board does not change run to run. Fixes the loose boulder that stood in the barricade line looking solid and was not — the line's keep-out grew a tile, and nothing plants near it now. |
+| 2026-09-22 | Per feedback: widened the yard between Station 1 and the boulder line (`BARRICADE_T` 0.5 -> 0.55, circle 1 further west) and the knight now **walks** into it when briefed instead of fading out. `_knight_stand` is searched once by `_knight_rest()` -- toward the station, off the road, clear of the rocks and the buildings -- and reserved against the decor pass so he does not step down into a tree. `map_shot.gd` grew `dismiss`/`hold` so the after state can be photographed. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

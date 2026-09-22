@@ -154,6 +154,30 @@ Grouped by station. Each row: question text + `(Ans: …)` and **Set** · **Edit
 - Sequential items, no skipping ahead.
 - Team-based winner, never individual.
 
+### Project settings
+
+The durable record of the non-default values in `game/project.godot`. It lives here
+because Godot rewrites that file whenever any setting changes, and **its writer drops
+every comment**, so anything explained only in the file itself is lost the first time
+someone touches Project Settings.
+
+| Setting | Value | Why |
+|---|---|---|
+| `application/config/quit_on_go_back` | `false` | Android's back button opens the pause menu (`Main._notification`) instead of killing a run in progress. |
+| `display/window/handheld/orientation` | `4` | Sensor Landscape — both landscape rotations, portrait locked out. |
+| `display/window/size/viewport_width/height` | `640` × `360` | The canvas every screen is laid out against; `window_*_override` is 2× that for desktop runs. |
+| `display/window/stretch/mode` | `canvas_items` | Scales the UI with the window instead of the viewport, so text stays crisp. |
+| `rendering/.../default_texture_filter` | `0` (nearest) | Pixel art — bilinear filtering blurs every sprite. |
+| `renderer/rendering_method(.mobile)` | `gl_compatibility` | Target devices are low-end Android; Forward+ is not an option. |
+| `gui/theme/custom_font` | `PixelifySans.ttf` | Project-wide font. `Art.apply_font_fallback()` attaches DejaVu for the glyphs it lacks. |
+
+> **Never use `#` for comments in `project.godot`.** Godot's config parser does not
+> recognise it: it folds the `#` line *and the key beneath it* into a single garbage
+> quoted key, so that setting silently stops applying while still looking correct in
+> the file. This is not hypothetical — `config/quit_on_go_back=false` sat under two
+> `#` lines and read back as `true` the whole time, meaning the Android back button
+> was quitting mid-run. Fixed 2026-09-22 by switching those two lines to `;`.
+
 ---
 
 ## 9. Current implementation vs. spec
@@ -417,6 +441,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Victory Gate is now `Red_Castle` (was two boulders + a ribbon). Freed it up by stepping station 3's tower down to `Red_House1` (the red livery has no second castle-scale asset). |
 | 2026-09-22 | Client cut item counts to **8/3/3** (14 total, was 20/10/10). `Game.ITEMS_PER_STATION`/`TOTAL_ITEMS` updated; map, gating and tests are parametric off those two constants so nothing else changed. |
 | 2026-09-22 | **Base camp is its own island**, and Tower 1 moved onto it as the camp's gatehouse. The causeway out of camp only rises once the Station 1 briefing is done, so the board cannot be walked at all before the first station. Four islands / four `TRAILS` now; `_station_island()` (one station = one island) replaced by `_island_of_anchor()`, since Tower 1 and its circles no longer share ground. Camp *dressing* is still the old fire + label — deferred. |
+| 2026-09-22 | **`config/quit_on_go_back=false` was never applying.** Godot's config parser does not treat `#` as a comment — it folds the `#` line and the key beneath it into one garbage quoted key — so the two `#` lines above it silently voided the setting, and Android's back button was quitting mid-run instead of opening the pause menu. Switched to `;`, which parses. Non-default settings are now recorded in §8 "Project settings", because Godot's writer drops every comment when a setting changes. |
 | 2026-09-22 | Per feedback, rearranged: camp island moved to the map's **right** (island 1 mirrored about x=0.5 to make room), the crossing became a walkable **land bridge**, and Tower 1 moved across it onto Station 1's own island. The gate is now a **giant knight** plugging a stamped three-tile neck behind the station, fading to black on the briefing (`_stamp_neck()`, `_post_knight()`, `_dismiss_knight()`). Net simplification downstream: `_find_causeways()` skips seam 0, so the causeway array means "the gate into station i+1" again and last round's `i == 0` special cases in `_refresh_causeways()`, the signage and the toast all reverted. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |

@@ -1,13 +1,18 @@
 extends Control
 
-## Top-level screen router. Each screen is a Control built in code (no .tscn),
-## registered here and switched via `Main.open(name, data)`.
+## Top-level screen router. Each screen is a Control built in code, registered
+## here and switched via `Main.open(name, data)`. The adventure map is the one
+## entry that is a PackedScene instead of a script -- not for its visuals, which
+## are still generated, but because its layout is authored as nodes you can drag
+## in the editor viewport.
 
 const SCREENS := {
 	"splash": preload("res://scripts/SplashScreen.gd"),
 	"title": preload("res://scripts/TitleScreen.gd"),
 	"hero": preload("res://scripts/HeroSelectScreen.gd"),
-	"adventure": preload("res://scripts/AdventureScreen.gd"),
+	# The one screen that is a scene, not a bare script: its board geometry is
+	# authored as draggable nodes under `Board.tscn/Layout`. See BoardLayout.gd.
+	"adventure": preload("res://scenes/Board.tscn"),
 	"learn": preload("res://scripts/LearnScreen.gd"),
 	"board": preload("res://scripts/LeaderboardScreen.gd"),
 	"summary": preload("res://scripts/SummaryScreen.gd"),
@@ -26,7 +31,8 @@ func _ready() -> void:
 func open(name: String, data: Dictionary = {}) -> void:
 	if current != null:
 		current.queue_free()
-	current = SCREENS[name].new()
+	var res: Resource = SCREENS[name]
+	current = res.instantiate() if res is PackedScene else res.new()
 	current.set("main", self)
 	add_child(current)
 	current.setup(data)

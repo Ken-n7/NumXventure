@@ -1,7 +1,12 @@
+@tool
 class_name Art
 extends RefCounted
 
 ## Texture helpers for the Tiny Swords pack.
+##
+## `@tool` only so the board's editor preview can call these while you drag the
+## layout about -- every function here is a pure texture/image helper with no
+## scene-tree or run state, so running them in the editor is the same work.
 ##
 ## The pack's unit sheets are strips of packed frames with *uneven* widths, so
 ## a fixed hframes grid would mis-cut. `frames()` scans the alpha channel to

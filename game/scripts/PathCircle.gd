@@ -1,3 +1,4 @@
+@tool
 extends Node2D
 
 ## One stop on the board path: exactly one question item. Its tower is the same

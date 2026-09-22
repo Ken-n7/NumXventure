@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/AdventureScreen.gd" id="1_66b1s"]
+[ext_resource type="Script" path="res://scripts/BoardLayout.gd" id="2_w6jgk"]
+[ext_resource type="Script" path="res://scripts/IslandHandle.gd" id="3_xdl3i"]
+
+[sub_resource type="Curve2D" id="Curve2D_wlyqt"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 2933.76, 1477.4401, 0, 0, 0, 0, 2503.68, 1373.76)
+}
+point_count = 2
+
+[sub_resource type="Curve2D" id="Curve2D_kqf1l"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 2304, 1365.12, 0, 0, 0, 0, 1843.2001, 1555.2, 0, 0, 0, 0, 860.16003, 1589.76, 0, 0, 0, 0, 307.2, 1434.24, 0, 0, 0, 0, 491.52, 1192.32, 0, 0, 0, 0, 1228.8, 1123.2, 0, 0, 0, 0, 1167.36, 1036.8)
+}
+point_count = 7
+
+[sub_resource type="Curve2D" id="Curve2D_hljw5"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 952.32, 673.92, 0, 0, 0, 0, 368.63998, 604.8, 0, 0, 0, 0, 368.63998, 380.16, 0, 0, 0, 0, 768, 276.47998, 0, 0, 0, 0, 1228.8, 397.44)
+}
+point_count = 5
+
+[sub_resource type="Curve2D" id="Curve2D_wxh2q"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 1843.2001, 397.44, 0, 0, 0, 0, 2304, 276.47998, 0, 0, 0, 0, 2734.08, 380.16, 0, 0, 0, 0, 2703.3599, 587.52, 0, 0, 0, 0, 2150.4, 656.64)
+}
+point_count = 5
+
+[node name="Board" type="Control" unique_id=183607320]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_66b1s")
+
+[node name="Layout" type="Node2D" parent="." unique_id=1546968760]
+script = ExtResource("2_w6jgk")
+
+[node name="Islands" type="Node2D" parent="Layout" unique_id=492229183]
+
+[node name="Island0" type="Marker2D" parent="Layout/Islands" unique_id=420537562]
+position = Vector2(2841.6, 1382.4)
+script = ExtResource("3_xdl3i")
+wobble = 0.6
+
+[node name="Radius" type="Marker2D" parent="Layout/Islands/Island0" unique_id=1523290007]
+position = Vector2(178.176, 233.28001)
+
+[node name="Island1" type="Marker2D" parent="Layout/Islands" unique_id=300530162]
+position = Vector2(1274.88, 1321.9199)
+script = ExtResource("3_xdl3i")
+
+[node name="Radius" type="Marker2D" parent="Layout/Islands/Island1" unique_id=1852160369]
+position = Vector2(1121.28, 388.8)
+
+[node name="Island2" type="Marker2D" parent="Layout/Islands" unique_id=1743370053]
+position = Vector2(798.72, 466.56003)
+script = ExtResource("3_xdl3i")
+wobble = 3.1
+
+[node name="Radius" type="Marker2D" parent="Layout/Islands/Island2" unique_id=1396578235]
+position = Vector2(660.48, 302.4)
+
+[node name="Island3" type="Marker2D" parent="Layout/Islands" unique_id=1825931623]
+position = Vector2(2273.28, 466.56003)
+script = ExtResource("3_xdl3i")
+wobble = 5.3
+
+[node name="Radius" type="Marker2D" parent="Layout/Islands/Island3" unique_id=1425681639]
+position = Vector2(660.48, 302.4)
+
+[node name="Trails" type="Node2D" parent="Layout" unique_id=1580424552]
+
+[node name="Trail0" type="Path2D" parent="Layout/Trails" unique_id=764151324]
+curve = SubResource("Curve2D_wlyqt")
+
+[node name="Trail1" type="Path2D" parent="Layout/Trails" unique_id=757580676]
+curve = SubResource("Curve2D_kqf1l")
+
+[node name="Trail2" type="Path2D" parent="Layout/Trails" unique_id=1109663814]
+curve = SubResource("Curve2D_hljw5")
+
+[node name="Trail3" type="Path2D" parent="Layout/Trails" unique_id=1727219628]
+curve = SubResource("Curve2D_wxh2q")
+
+[node name="Lifts" type="Node2D" parent="Layout" unique_id=1767028317]
+
+[node name="Tower0" type="Marker2D" parent="Layout/Lifts" unique_id=715143420]
+
+[node name="Tower1" type="Marker2D" parent="Layout/Lifts" unique_id=354772094]
+
+[node name="Tower2" type="Marker2D" parent="Layout/Lifts" unique_id=1671701807]
+
+[node name="Knight" type="Marker2D" parent="Layout" unique_id=138088113]
+
+[node name="Decor" type="Node2D" parent="Layout" unique_id=2044401083]

@@ -375,7 +375,10 @@ progression either — the sequential rule lived only in `_can_answer()`.
   column checked — and the one horizontal cut that did isolate all three ran
   through a circle's own doorstep. A fence drawn *round* the corner has the whole
   island outside it. It is swung at `arc` cells' radius from the station's
-  doorstep, half a cell of arc per step so the curve never skips a cell, and each
+  doorstep, with the gap on the bearing the walk leaves by give or take `shift`
+  cells of arc (nothing draws the road, so the way out is open wherever the gap
+  is -- `shift` only decides where the guard stands). Half a cell of arc per step
+  so the curve never skips a cell, and each
   cell's rect is a tile and a half square so neighbours overlap however it steps
   and no diagonal slip opens between two of them. Straight lines keep `_lay_line()`
   and their two-deep rects -- Station 1's is one. Which shape holds is not
@@ -548,6 +551,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Island 2's walk put back the way it was (bridge into the south-east corner, circles looping west–north–east) and its gate became a **curve**: a fence of boulders swung round Station 2's corner from water to water, gap on the road out, per *"the boulder extends from it from its left side curving towards the islands edge"*. Station 2 moved back and right into that corner. `BARRICADES` entries now take `t` for a straight line or `arc` for a fence; `_assert_line()` stopped checking that a line's ends run into water, since that is a statement about straight lines and the flood fill answers "does it hold" for both shapes. |
 | 2026-09-22 | Island 3 gets the same treatment: the last causeway became a **land bridge with a guard**, straight across the walk like Station 1's, with the red towers and the Victory Gate past it. With every seam bridged the causeway machinery had no users left, so it is deleted — `_find_causeways()`, `_dress_causeways()`, `_refresh_causeways()`, `open_causeway()`, `_items_through()`, `CAUSEWAY_HALF`, the stepping stones and the signage. One `git revert` away if a crossing ever wants to be terrain again. |
 | 2026-09-22 | Island 3's gate became a curve as well, per feedback: from the right of Station 3's outpost, starting below its east house rather than beside it, sweeping down and away to the island's lower-left shore and nowhere near the Victory Gate. Guards now **face the way the player comes at them** — Station 3's was looking away from its own bridge. And where a guard steps aside is searched properly now: he was landing in his own rubble, then on a roof. One box, one filter, three widening searches. |
+| 2026-09-22 | Station 3's guard moved two boulders down his own fence (`shift` on an `arc` barricade, in cells of arc). |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

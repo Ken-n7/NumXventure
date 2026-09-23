@@ -215,6 +215,55 @@ Two of them, both debug-build only and neither loaded by the game:
   guard down), `drawer` (slide the dev drawer out) and `hold` (wait N frames),
   which is how the *after* state of anything that animates gets photographed.
 
+- **`tools/board_dump.gd`** — `godot --headless --path game --script
+  res://tools/board_dump.gd -- <out file>` writes a sorted text dump of the
+  built board: every anchor, station wall, circle, keep-out box, guard post and
+  rest spot, every boulder wall, digests of the land/beach/trail/taken cell
+  sets, and every node under `world` with its position, scale and texture. Take
+  one before a change and one after and `diff` them — they must be identical
+  for any refactor that is not meant to move anything. Screenshots cannot do
+  this job: every unit on the board is animating, so two runs of `map_shot.gd`
+  differ by up to 1.7% of their pixels on animation phase alone, and a
+  threshold loose enough to swallow that is loose enough to swallow a boulder
+  moving a cell. The dump is taken the instant `setup()` returns, before a
+  single idle frame, so nothing in it depends on timing.
+
+### Known compromises
+
+Values that are **not** free choices — the geometry pins them, and the knob in
+`scripts/config/MapCfg.gd` carries a one-line pointer here rather than the
+derivation.
+
+#### Station 3's keep, knight and fence are one problem
+
+Each is sitting at a compromise the geometry forced, not at what was wanted:
+
+| | asked for | got | why |
+|---|---|---|---|
+| keep | move 0.03 east to clear the water | 0.01 | a bigger fence is the price, see below |
+| knight | stand down-left of his post | stands through the gap | down-left is the road, and below that the station's signboard |
+| boulders | room either side of `arc 6.0` | none | 6.0 is simultaneously the floor and the ceiling |
+
+They are one problem, not three: the keep's x sets the fence's radius, and the
+radius plus the signage is what leaves the knight nowhere on his own side.
+Moving the signboard, or re-cutting the gap with `shift`, loosens all three at
+once.
+
+**Why `arc` is pinned at 6.0.** A fence only gates while *both* its arms run out
+of island. The west arm has to reach the west shore, or it carries on round,
+crosses the land bridge the player arrives by, and closes the arc around the
+station — putting the gate between the player and the briefing, with the circles
+loose outside it. The shore by that bridge sits at x 0.548, so the arm reaches
+it only while
+
+    arc >= (station x - 0.548) * WORLD_W
+
+— 6.0 cells at x 0.61. Moving the keep further east costs a bigger fence (0.63
+needs 8.0), and by then the arc has swung out over the Victory Gate. That pair
+of limits is why the keep moved 0.01 east and not the 0.03 it was offered.
+
+`tools/check_guards.gd` walks the board and fails if this ever stops holding.
+
 ## 9. Current implementation vs. spec
 
 Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android export preset already wired to `build/NumXventure.apk` (arm64, no keystore yet). Every screen is built in code; `scenes/Main.tscn` is a stub. Router: `scripts/Main.gd` with seven screens (`splash, title, hero, adventure, learn, board, summary`).

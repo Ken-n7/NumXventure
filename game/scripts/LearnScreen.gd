@@ -65,7 +65,7 @@ func _build() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 8)
-	for i in 3:
+	for i in LESSONS.size():
 		var b := Ui.button(LESSONS[i][0], 150, 40, Ui.SMALL_RED if i == 1 else Ui.SMALL)
 		b.pressed.connect(func(idx := i) -> void: _show(idx))
 		_tab_buttons.append(b)
@@ -102,6 +102,6 @@ func _show(idx: int) -> void:
 	_content.text = "%s\n%s\n\n%s" % [l[0], l[1], bullets]
 	_examples.text = "Worked examples:\n" + "\n".join(l[3])
 	_rule.text = "Rule reminder: " + l[4]
-	for i in 3:
+	for i in LESSONS.size():
 		_tab_buttons[i].add_theme_color_override("font_color",
 				Pal.CREAM if i == idx else Color(1, 1, 1, 0.96))

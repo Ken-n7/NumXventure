@@ -380,11 +380,38 @@ progression either — the sequential rule lived only in `_can_answer()`.
   doorstep, with the gap on the bearing the walk leaves by give or take `shift`
   cells of arc (nothing draws the road, so the way out is open wherever the gap
   is -- `shift` only decides where the guard stands). Half a cell of arc per step
-  so the curve never skips a cell, and each
-  cell's rect is a tile and a half square so neighbours overlap however it steps
-  and no diagonal slip opens between two of them. Which shape a gate takes is not asserted
-  per-gate: the flood fill in `test_collisions.gd` walks the ground and sees where
-  it gets, which answers it whatever the shape.
+  so the curve never skips a cell, and each cell's wall is `ROCK_WALL` — wider
+  than its cell — so neighbours overlap however it steps and no diagonal slip
+  opens between two of them. Which shape a gate takes is not asserted per-gate:
+  the flood fill in `test_collisions.gd` walks the ground and sees where it gets,
+  which answers it whatever the shape.
+- ✅ **A wall stands on what you can see** (`ROCK_WALL`, `GUARD_REACH`). Every
+  sprite on this board is base-anchored, so a boulder is drawn a whole texture
+  height *above* the cell it was laid on. The fence's walls were centred on the
+  cell instead, which put most of a tile of invisible wall on the open grass below
+  each stone and left the stone's own top walkable — 30% of the blocked ground on
+  the board had nothing drawn over it, and the fences bumped you into thin air.
+  Three fixes, all of them the same idea:
+  - a boulder's wall is `ROCK_WALL`, sized and placed on the stone, the way a
+    building's wall has always been the foot of the building;
+  - the gap is sized off the guard's **drawn body** rather than evenly round his
+    post (`GUARD_REACH`: his shoulders across, his chest above, and just enough
+    below to keep the cell he stands on), because he too is drawn upward from his
+    boots — centred, the slack always landed under him, which was the one stretch
+    of the whole fence that read as a way through. It is measured against each
+    cell's *middle*, not along the arc: a post sits wherever the bearing puts it
+    inside its own cell, so one arc length rounded to two cells at station 1 and
+    three at station 3, which left the red knight a stride of bare grass over his
+    head with the wall still in it;
+  - each arm takes one step past the last land cell, so the fence ends with a
+    stone in the shallows. A wall on the stone leaves the stone's own cell — the
+    ground at its foot — open, and at an arm's end that foot was the way round.
+  Every guard's flanking stones now overlap him, above and below, and no wall
+  reaches past his helmet or more than 6px under his boots. Bare blocked ground
+  is down to 4%, and what is left is the corner slivers where
+  the curve steps diagonally, which is the overlap that seals it. `_assert_line()`
+  holds both invariants: every wall sits above its own cell's middle, and each
+  fence has exactly two stones in the water.
 - ✅ **A guard faces the way the player will come at him** — from his own station's
   side, since reaching the station is what opens his gate, so that is the only
   direction anyone arrives from. West of the station he faces east, east of it he
@@ -395,9 +422,8 @@ progression either — the sequential rule lived only in `_can_answer()`.
   rocks in it fills up fast, and island 2's is half sea besides — so it widens to
   anywhere near the station, then to anywhere just off the gap. "Open" is one box
   for a man about two cells across and two high: off the road, out of the rubble
-  (measured a little below his feet, since a rock is a 48px rect but a 64px sprite
-  and the y-sort draws the one below him over his boots), off the signage, and not
-  standing on a building.
+  (measured a little below his feet, since the y-sort draws a stone in the cell
+  below him over his boots), off the signage, and not standing on a building.
 - ✅ **Four islands** (`AdventureScreen.ISLANDS`), on a world grown
   from 44×30 to **96×54** — 3072×1728, deliberately 16:9 so the whole-board view
   fills the screen exactly.
@@ -556,6 +582,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Station 1's wall curved too, radius picked so the gap lands on the cell the straight line put the knight on — he has not moved, the wall around him has. With all three gates fences, `_lay_line()` and `_cells_rect()` had no callers and are gone. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
+| 2026-09-23 | **The fences were walls in the wrong place.** Every sprite here is base-anchored, but a boulder's `_solid` rect was centred on the cell it was laid on — so the block sat most of a tile *below* the stone you can see, the stone's own top was walkable, and 30% of the blocked ground on the board had no art over it. Walls now stand on the stone (`ROCK_WALL`), a guard's gap is sized off his drawn body instead of evenly round his post, measured against cell middles rather than arc length (`GUARD_REACH` — evenly round, the slack landed under his boots; by arc length one number rounded to two cells at station 1 and three at station 3, leaving the red knight bare grass over his head), and each arm steps one cell into the shallows, because a wall on the stone leaves the stone's foot open and at an arm's end that foot was the way round. `ROCK_SCALE` 1.0 → 1.2 so stones touch where the curve steps diagonally. Bare blocked ground 30% → 4%. `BARRICADE_GAP` is gone; `_assert_line()` gained both invariants. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |
 | 2026-09-21 | Decided: mockups win over the paper on station order; our own art style, PDFs are a mechanics/layout contract only; admin question bank with generator fallback; LAN first with cloud behind the same `Net.gd` interface. |
 | 2026-09-21 | **Phase 0 shipped.** Station order swapped (G12), splash screen added (G13), font floor `Art.MIN_FONT`, landscape lock, `±` on all platforms (G19), exponent generator de-duplicated. All tests green. Next: Phase 1 (map rework) — blocked on **Q6** (what the Victory Gate shows). |

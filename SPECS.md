@@ -52,7 +52,7 @@ One continuous path: base camp → Station 1 → 8 circles → Station 2 → 3 c
 
 Each station's keep is its own building — **Blue Monastery**, **Yellow Archery**, **Red Barracks** — with two houses of the same livery either side. Every walk-up circle is a **Tower** in that station's livery, so a stop always reads as a stop and never as a keep.
 
-The base camp sits on its own small island at the map's right, joined to Station 1's island by a **land bridge**. Station 1's monastery stands on island 1's own ground where that bridge lands, and a **line of boulders** runs from shore to shore across the island just west of it, with a giant knight filling its one gap — so the walk cannot begin before the first station has been entered. Island 2 is the same shape: a second land bridge lands beside Station 2's outpost, and its own giant guard holds a boulder line between that outpost and its circles. **One rule for every guard — his own station's briefing stands him down.** What keeps the walk in order is not the guards but `_can_enter_tower()`: a station only opens its briefing while the current item belongs to it, so reaching Station 2's door early gets you nothing but the view. Only the last crossing, on to Station 3's island, is still a causeway that rises.
+The base camp sits on its own small island at the map's right, joined to Station 1's island by a **land bridge**. Station 1's monastery stands on island 1's own ground where that bridge lands, and a **line of boulders** runs from shore to shore across the island just west of it, with a giant knight filling its one gap — so the walk cannot begin before the first station has been entered. Island 2 is the same idea in a different shape: a second land bridge lands in its south-east corner, where Station 2's outpost stands, and its own giant guard holds a **curved fence of boulders swung right round that corner** — water on one side of it to water on the other, with one gap where the road leaves west for the circles. **One rule for every guard — his own station's briefing stands him down.** What keeps the walk in order is not the guards but `_can_enter_tower()`: a station only opens its briefing while the current item belongs to it, so reaching Station 2's door early gets you nothing but the view. Only the last crossing, on to Station 3's island, is still a causeway that rises.
 
 **One circle = one item.** Strictly sequential — a player cannot reach circle *n+1* before resolving circle *n*. Item counts are fixed per station.
 
@@ -341,10 +341,11 @@ progression either — the sequential rule lived only in `_can_answer()`.
 - ✅ **Two of the three gates are a body in a wall, not terrain.** `BARRICADES` is
   the list, one entry per gate: the station it belongs to (its livery, and the
   tower its guard steps aside toward) and how far along the stretch between that
-  station's tower and its first circle the line stands. One rule for all of them —
+  station's tower and its first circle the line stands (`t`), **or** the radius of
+  a fence swung right round the station instead (`arc`). One rule for all of them —
   **his own station's briefing stands him down** — so a station is always on the
-  near side of its own guard. `_build_barricade()` lays a **line of boulders**
-  there, land's end to land's end:
+  near side of its own guard. `_build_barricade()` lays **boulders** either way,
+  land's end to land's end:
   one `Rock%d.png` and one `_solid` rect per cell, stepping out from the road to the
   sea on both sides, so there is no way round. A **giant knight** (the guards' own
   `Warrior_Idle` sheet at 3× their scale) fills the two-cell gap the road runs
@@ -365,15 +366,18 @@ progression either — the sequential rule lived only in `_can_answer()`.
   Station 1 and the rest of the island. `test_collisions.gd` proves it both ways —
   with him posted no circle is reachable from camp; dismissed, Station 1's eight
   are — and separately that both ends of every line run into water.
-- ✅ **Island 2 runs west to east**, because the gate has to fit. Its walk used to
-  land in the south-east and loop back on itself to reach the seam, and a line
-  square across that walk always stranded the last circle on the station's side of
-  it — checked every column — while the one cut that did work ran straight through
-  a circle's own doorstep. Landing in the south-west and running away east gives
-  the same shape island 1 has: station, gate, circles. A keep that steps sideways
-  rather than up (`_tower_lift()` on a vertical bend, which is Station 2 now) puts
-  its signage *below* the outpost, since its houses stand at the doorstep's own
-  height and would otherwise print themselves across the line.
+- ✅ **A fence, where a line will not fit** (`_lay_arc()`). Island 2's walk lands in
+  its south-east corner and loops back on itself to reach the seam, so a line
+  square across it always strands the last circle on the station's side — every
+  column checked — and the one horizontal cut that did isolate all three ran
+  through a circle's own doorstep. A fence drawn *round* the corner has the whole
+  island outside it. It is swung at `arc` cells' radius from the station's
+  doorstep, half a cell of arc per step so the curve never skips a cell, and each
+  cell's rect is a tile and a half square so neighbours overlap however it steps
+  and no diagonal slip opens between two of them. Straight lines keep `_lay_line()`
+  and their two-deep rects. Which shape holds is not asserted per-gate: the flood
+  fill in `test_collisions.gd` walks the ground and sees where it gets, and that
+  answers it for both.
 - ✅ **Four islands** (`AdventureScreen.ISLANDS`), on a world grown
   from 44×30 to **96×54** — 3072×1728, deliberately 16:9 so the whole-board view
   fills the screen exactly.
@@ -528,6 +532,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | Island 2 is reached by a **land bridge with a guard**, like island 1, instead of a causeway that rises. The hard-coded knight became `BARRICADES`, a list of gates (station, what opens it, where the line stands); `BRIDGED_SEAMS` says which crossings are bridges, `_stamp_path()` lays ground under the hop from one trail to the next where they are, and each causeway now carries its own `seam` so one being skipped does not shift what the others mean. Station 2's guard wears its livery, carries a `Clear Station 1 to pass` sign, and steps aside to the outpost when Station 1 runs out of circles. Guards now pick a stand-down spot furthest-first toward their own station, and clear the signage with their whole body rather than just the cell they stand on. |
 | 2026-09-22 | **Dev drawer** (`scripts/DevDrawer.gd`), debug builds only: a slide-out panel on the left of the Adventure map with Skip Station, Teleport, Aerial, Open Gates, Fast Walk, Freeze, +1:00, Show Walls and End Run. `TOOLS` is the table — one line adds a button. Skip Station is what the later islands are tested through, so `test_collisions.gd` now walks the whole gating ladder with it as well. The joystick's zone shrinks to the strip the drawer is not using, since it claims the left half of the canvas and marks those touches handled. |
 | 2026-09-22 | Per feedback — *"the player have to interact with the station first to make the knight move like how it is in station 1"* — **one rule for every guard: his own station's briefing stands him down**, so a station always stands on the near side of its own gate. That needed island 2 re-routed: its walk looped back on itself, and no line across it isolated all three circles (every column checked; the one horizontal cut that worked ran through a circle's doorstep). It now lands in the south-west and runs east, `TRAILS[1]` ends in island 1's north-west to meet it, and `BARRICADES` lost its `opens`/`step` fields since there is only the one rule left. Sideways-lifted keeps put their signage below the outpost. |
+| 2026-09-22 | Island 2's walk put back the way it was (bridge into the south-east corner, circles looping west–north–east) and its gate became a **curve**: a fence of boulders swung round Station 2's corner from water to water, gap on the road out, per *"the boulder extends from it from its left side curving towards the islands edge"*. Station 2 moved back and right into that corner. `BARRICADES` entries now take `t` for a straight line or `arc` for a fence; `_assert_line()` stopped checking that a line's ends run into water, since that is a statement about straight lines and the flood fill answers "does it hold" for both shapes. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

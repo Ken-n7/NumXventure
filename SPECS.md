@@ -228,6 +228,33 @@ Two of them, both debug-build only and neither loaded by the game:
   moving a cell. The dump is taken the instant `setup()` returns, before a
   single idle frame, so nothing in it depends on timing.
 
+### Code map
+
+One concern per file. Open the one whose name says what you want to change.
+
+| File | What lives there |
+|---|---|
+| **`scripts/config/MapCfg.gd`** | **Every knob the map is built from** — world size, islands, trails, buildings, blockers, guards, hero, camera, decor, and the asset paths. Change a number here, nowhere else. |
+| **`scripts/config/Pal.gd`** | **Every colour and font size**, plus the 640×360 canvas the layouts are built against. |
+| `scripts/map/MapGrid.gd` | What is where: land / shore / road / taken cells, walls, keep-outs, the anchors — and every spatial question put to them. Holds no nodes. |
+| `scripts/map/MapBuilder.gd` | The ground and the walk: tilemaps, island shapes, the authored trails stamped over them, where each stop stands. |
+| `scripts/map/Stations.gd` | The buildings: each keep, its two houses and door guards, the base camp, the Victory Gate. |
+| `scripts/map/Barricades.gd` | The gates: a fence of boulders per station and the giant knight in its gap. |
+| `scripts/map/Decor.gd` | Everything growing: prop patches, sheep, water rocks. |
+| `scripts/AdventureScreen.gd` | The walk and the play: gating, targeting, input, camera, the quiz handoff. Builds nothing itself. |
+| `scripts/AdventureHud.gd` | Everything drawn over the board: top bar, prompt line, gem gauge, touch pad, pause menu. |
+| `scripts/Art.gd` · `scripts/Ui.gd` | Shared drawing and shared widgets. `Ui.screen_panel/dim/scroll/centre_row/mmss` are what the menu screens are built from. |
+| `scripts/Game.gd` | The only autoload: run state, the gem economy, the clock, the save file, the input map. |
+| `scripts/tests/TestCase.gd` | What the scene suites share, including the guard that stops a broken suite reporting PASS. |
+
+**Running the suites:** `tools/run_tests.sh` — all five headless suites plus, where
+there is a display, the two windowed tools. One exit code. It fails on a timeout
+and on a `SCRIPT ERROR` as well as on a failed check, because GDScript aborts the
+function and carries on, so a broken suite can otherwise still exit 0.
+
+**Changing anything on the map:** take a `tools/board_dump.gd` before and after and
+diff them. See the tool's entry above for why screenshots cannot do that job.
+
 ### Known compromises
 
 Values that are **not** free choices — the geometry pins them, and the knob in
@@ -270,22 +297,25 @@ Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android ex
 
 ### Already correct — do not rebuild
 
+Named by function, not by line: half these line numbers were already stale
+before the 2026-09-23 cleanup moved the rest of them. Grep for the name.
+
 | Spec item | Where |
 |---|---|
-| Whole gem economy, exact values | `scripts/Game.gd:12-18`, `mark_correct/mark_wrong/spend_hint/mark_skipped/finish_station` `:190-232` |
+| Whole gem economy, exact values | `Game.GEM_*` consts; `Game.mark_correct/mark_wrong/spend_hint/mark_skipped/finish_station()` |
 | 50 start gems, +10/−5/−5/−15, perfect-station +10, −25 unfinished | same |
 | One hint per item | `Game.spend_hint()` + `item_used_hint`, reset in `begin_item()` |
-| Item counts 8/3/3 | `Game.ITEMS_PER_STATION:21` |
-| Shared countdown timer, auto-end at zero | `Game.gd:113-118` |
-| Station intro card with Mission line | `QuizOverlay._show_intro():139-151` |
-| Question screen: prompt, Hint, Skip, answer input, Submit | `QuizOverlay.gd:56-136`, `_submit():184-198` |
-| CORRECT / Almost There result overlays with gem delta + rule text | `QuizOverlay._show_result():200-218` |
-| Strict sequential station gating | `AdventureScreen._try_enter_station():430-444` |
-| Character select (32 heroes) | `HeroSelectScreen.gd:80-152` |
-| Learn hub, 3 topics | `LearnScreen.gd` |
+| Item counts 8/3/3 | `Game.ITEMS_PER_STATION` |
+| Shared countdown timer, auto-end at zero | `Game._process()` → `end_adventure()` |
+| Station intro card with Mission line | `QuizOverlay._show_intro()` |
+| Question screen: prompt, Hint, Skip, answer input, Submit | `QuizOverlay._build()`, `_submit()` |
+| CORRECT / Almost There result overlays with gem delta + rule text | `QuizOverlay._show_result()` |
+| Strict sequential station gating | `AdventureScreen._can_enter_tower/_can_answer/_can_enter_gate()`, dispatched by `_act_on()` |
+| Character select (32 heroes) | `HeroSelectScreen._build()` |
+| Learn hub, 3 topics | `LearnScreen.LESSONS` |
 | Leaderboard screen + summary screen | `LeaderboardScreen.gd`, `SummaryScreen.gd` |
-| Landscape, Android export, touch controls | `project.godot`, `export_presets.cfg`, `AdventureScreen._build_touch_pad():551-589` |
-| Headless test suite (rules, collisions, smoke, e2e, touch) | `test_rules.gd`, `test_collisions.gd`, `scripts/tests/*` |
+| Landscape, Android export, touch controls | `project.godot`, `export_presets.cfg`, `AdventureHud._build_pad()` |
+| Test suite (rules, collisions, smoke, e2e, touch) | `tools/run_tests.sh` runs all of them |
 
 ### Missing or wrong
 
@@ -295,16 +325,16 @@ Engine: **Godot 4.6.3**, GL Compatibility, 640×360 landscape canvas, Android ex
 | G2 | Admin role & entire admin dashboard | **absent** | No route, no screens |
 | G3 | Multi-device play, shared session | **absent** | Zero networking; no `rpc`, no HTTP, no INTERNET permission |
 | G4 | Teams & team-name-as-join-code | **absent** | `Game.team_name` is a cosmetic string on the leaderboard row |
-| G5 | Live leaderboard (team + player tabs, correct-response count) | **absent** | Local only; rivals are hardcoded fakes at `Game.gd:36-41` |
-| G6 | Admin-set duration, Start/Pause/Resume for everyone | **wrong owner** | Player picks from `DURATION_CHOICES` at hero select; pause menu is player-side (`AdventureScreen.gd:646-681`) — spec says players have **no** pause |
+| G5 | Live leaderboard (team + player tabs, correct-response count) | **absent** | Local only; rivals are hardcoded fakes at `Game.RIVALS` |
+| G6 | Admin-set duration, Start/Pause/Resume for everyone | **wrong owner** | Player picks from `DURATION_CHOICES` at hero select; pause menu is player-side (`AdventureHud.toggle_pause()`) — spec says players have **no** pause |
 | G7 | Question bank CRUD + per-question hint + per-question feedback | **absent** | All generated at call time from consts |
-| G8 | Rescue (transfer 10 gems) | **stubbed** | Button exists but `disabled = true`, `QuizOverlay.gd:114-116` |
-| G9 | Elimination at 0 gems → −50 team | **absent** | Gems merely clamp at 0 (`Game._apply():184-186`) |
+| G8 | Rescue (transfer 10 gems) | **stubbed** | Button exists but `disabled = true`, `QuizOverlay`'s Rescue button |
+| G9 | Elimination at 0 gems → −50 team | **absent** | Gems merely clamp at 0 (`Game._apply()`) |
 | G10 | Circles on the map = one per item | **done** | 14 `PathCircle` nodes on the path, locked / current / done; progress is `Game.items_done` |
 | G11 | Tower-then-circles walk order, Victory Gate | **done** | `AdventureScreen._build_path()`: base camp → T1 → 20 → T2 → 10 → T3 → 10 → gate; `_can_enter_tower/_can_answer/_can_enter_gate` |
 | G12 | Station 2/3 content order | **done** | Swapped in Phase 0; asserted in `test_rules.gd` |
 | G13 | Loading/splash screen | **done** | `scripts/SplashScreen.gd`, routed first from `Main._ready()` |
-| G14 | Login screen, register screen | **absent** | `HeroSelectScreen.gd:4-5` explicitly waves this off as "a web concern" |
+| G14 | Login screen, register screen | **absent** | `HeroSelectScreen`'s header explicitly waves this off as "a web concern" |
 | G15 | Home dashboard with 4 tabs + username + character + Log Out | **partial** | `TitleScreen.gd` is a main menu, not a tabbed dashboard |
 | G16 | Team-name entry as its own screen after Start Adventure | **partial** | One optional `LineEdit` on hero select |
 | G17 | Aerial map POV → admin starts → camera swoop transition | **done** (offline) | `AdventureScreen._start_intro()` holds the board frozen with **no joystick** until a tap, click or interact press fires `_swoop()`; `Game.clock_paused` means the wait is free. That's the offline stand-in — Phase 3 routes the admin's Start Game into the same `_swoop()` call instead. The world is exactly 16:9 so `_aerial_zoom()` frames the whole board with no bars; what it cannot do is text — circle numbers and station signs are world-space and illegible at 0.208 |
@@ -533,7 +563,7 @@ and open, the card, the Victory Gate.
 - `scripts/AuthStore.gd`: usernames unique, password ≥8 chars, hashed (`Crypto`/SHA-256 + salt — do not store plaintext), role `player|admin`. Backed by `user://accounts.cfg` for now; moves to the host in Phase 4.
 - New screens: `LoginScreen.gd`, `RegisterScreen.gd` (Username · Password + Show · Select Role · Register). Register → character select → Home.
 - Rework `TitleScreen.gd` into `HomeScreen.gd`: username + character portrait top-left, **Log Out** top-right, welcome banner, bottom tab bar **Home · Start Adventure · Leaderboard · Learn**.
-- `TeamNameScreen.gd` — the "Start Adventure → Enter Team Name → Ready!" step, split out of `HeroSelectScreen.gd:58-65`.
+- `TeamNameScreen.gd` — the "Start Adventure → Enter Team Name → Ready!" step, split out of `HeroSelectScreen._build()`.
 - Lock Learn during an active adventure (remove it from the pause menu).
 
 **Verify:** new `test_auth.gd` — duplicate username rejected, <8-char password rejected, wrong password rejected, role round-trips, password never appears in the save file.
@@ -546,8 +576,8 @@ Build the screens against local data; they light up for real in Phase 4.
 - `QuestionMgmtScreen.gd` — per-station list, each row `prompt (Ans: x)` + **Set** / **Edit** / **Delete**; Add form `Enter Question` · `Enter Hint` · `Enter Answer` → **Add**.
 - `FeedbackScreen.gd` — Select Question dropdown → 300-char feedback textarea with counter → **SAVE FEEDBACK**.
 - `scripts/QuestionStore.gd` — persisted bank: `{station, prompt, answer, hint, feedback, active}`. **Generator stays as fallback**: `QuestionStore.item(station, i)` returns the authored item if the station has enough *active* ones, else tops up from `QuestionGen`. Seed the bank on first run by generating a starter set.
-- Remove the player-side pause button; `AdventureScreen.gd:646-681` becomes admin-driven only.
-- Move duration out of `HeroSelectScreen.gd:92-102` — admin owns it now.
+- Remove the player-side pause button; `AdventureHud.toggle_pause()` becomes admin-driven only.
+- Move duration out of `HeroSelectScreen._pick_duration()` — admin owns it now.
 
 **Verify:** `test_questions.gd` — CRUD round-trips, a station with 3 active authored items still yields 20 items via fallback, feedback >300 chars rejected, deleting a question clears its feedback.
 
@@ -555,15 +585,15 @@ Build the screens against local data; they light up for real in Phase 4.
 - `Net.gd` + `NetEnet.gd` per the interface above. Admin hosts on `admin_start()`; students `join(team_name, username)`.
 - Team name is the join code — it must match a team the admin created, or the join is refused.
 - Host authoritative: shared clock, one pause pauses everyone, gem deltas validated server-side (never trust the client's arithmetic).
-- Live leaderboard streamed to both dashboards: **Team Ranking** (Rank · Team · Gems) and **Player Ranking** (Rank · Username · Gems · Correct Responses). Player-facing board shows the team tab only. Delete the hardcoded rivals at `Game.gd:36-41`.
+- Live leaderboard streamed to both dashboards: **Team Ranking** (Rank · Team · Gems) and **Player Ranking** (Rank · Username · Gems · Correct Responses). Player-facing board shows the team tab only. Delete the hardcoded rivals at `Game.RIVALS`.
 - Accounts + question bank move to the host so every player gets identical items.
 
 **Verify:** headless two-instance test — launch a host and two clients, join a team, admin starts, both clocks agree within 1s, admin pause freezes both, scores aggregate per team.
 
 ### Phase 5 — Rescue & elimination
-- Enable the Rescue dropdown (`QuizOverlay.gd:114-116`): lists teammates, transfers **10 gems** (−10 sender, +10 receiver), **one assist per sender per adventure**.
-- Elimination: a player hitting 0 gems is eliminated and the team takes **−50**. Remove the `maxi(gems+delta, 0)` clamp at `Game._apply():184-186` — it currently makes elimination unreachable.
-- `−25` for any member who doesn't finish all stations before time-up (already at `Game.gd:161-164`, needs to feed the team total).
+- Enable the Rescue dropdown (`QuizOverlay`'s Rescue button): lists teammates, transfers **10 gems** (−10 sender, +10 receiver), **one assist per sender per adventure**.
+- Elimination: a player hitting 0 gems is eliminated and the team takes **−50**. Remove the `maxi(gems+delta, 0)` clamp at `Game._apply()` — it currently makes elimination unreachable.
+- `−25` for any member who doesn't finish all stations before time-up (already at `Game.end_adventure()`, needs to feed the team total).
 
 **Verify:** extend `test_rules.gd` — elimination fires at exactly 0, team total reflects −50, rescue can't be used twice by one sender, rescue can't target a non-teammate.
 
@@ -605,6 +635,8 @@ Build the screens against local data; they light up for real in Phase 4.
 
 | Date | Change |
 |---|---|
+| 2026-09-23 | **Codebase cleanup — no behaviour change.** `AdventureScreen.gd` 2053 → 662 lines, split by the concerns its own section headers already named: `map/MapBuilder`, `map/Stations`, `map/Barricades`, `map/Decor`, all writing into one `map/MapGrid`, plus `AdventureHud` for everything drawn over the board. Every tunable moved to `config/MapCfg.gd` (including ~150 that were unnamed numbers inline and 13 inline asset paths) and every colour and font size to `config/Pal.gd` (95 raw `Color()` literals, one of which — `5a4632` / `5a4630` — was the same brown typo'd in two files). `Ui` grew `screen_panel/dim/scroll/centre_row/mmss` for the blocks the ten menu screens were each copying. `DevTools.gd` deleted (18 lines, one static, one caller). Proved by `tools/board_dump.gd`, identical at every step. Three deliberate visual consolidations: panels are centred now (the quiz was 4px high, the pause menu 9), the title is 26 not 27, and five dim overlays had four alphas between them. Three copy strings unified where the prompt line and its toast said the same thing two ways. |
+| 2026-09-23 | **Three suites were green while broken.** GDScript aborts the function on a runtime error and carries on, so `e2e_test` reported PASS having run 12 of its 267 checks, `test_collisions` erred on every run and exited 0, and `tools/map_shot.gd` — windowed, so not in any runner — called a method that had moved for a whole refactor. `tools/run_tests.sh` now runs everything under a timeout and fails on `SCRIPT ERROR`; `TestCase.finish()` refuses to pass a suite that did not reach its own last line. |
 | 2026-09-22 | Ring marker deleted: the tower **is** the interactable, and a bobbing **"!"** over the hero says when pressing E/GO would actually do something (station keeps and the Victory Gate too, not just circles). No "current" marker any more — identical towers, the floating number is the progress cue. Taps now aim at the tower, not the bare grass the ring used to sit on. `_can_act_on()` is the one rule, shared by the "!" and the prompt line. |
 | 2026-09-22 | Every question circle is now a `Blue_Tower` sprite tinted per station (was a generated flat disc), full building scale per the client's call. `_build_path()`'s decor keep-out box resized to the tower's real footprint. |
 | 2026-09-22 | Simplified per feedback: towers no longer dim when locked -- full brightness in every state. State is just the item number floating above the tower (constant color, present until done, then gone) plus the pulsing ring underfoot while it's the current item. Locked towers stay walkable and interactable; walking up and answering out of order already gave "finish X first" (`_try_answer_circle()`), unchanged. |

@@ -31,7 +31,7 @@ Tagline: *Explore. Solve. Conquer.*
 
 Registration: **Email** + **Username** (globally unique) + **Password** (min 8 chars, with Show toggle) + **Select Role** dropdown.
 
-**Login is by email, and there is a Forgot Password flow** (client, 2026-09-23 — not in any PDF). The username stays: it is the unique display name on Home and both leaderboards. Recovery is a **6-digit emailed code**, not a link — a link needs a web page or an Android deep link to land on, and the app has neither. See `supabase/README.md`.
+**Sign in with either the email or the username, plus a Forgot Password flow** (client, 2026-09-23 — neither is in any PDF; the mockups show username + password only). Registration takes all three. The username remains the unique display name on Home and both leaderboards. Recovery is a **6-digit emailed code**, not a link — a link needs a web page or an Android deep link to land on, and the app has neither. GoTrue only knows emails, so a username is resolved through `public.email_for_username()`; see `supabase/README.md`.
 After registering, the player **picks a character**; that character appears beside their username on Home.
 
 ---
@@ -115,7 +115,7 @@ Review hub with three sections, each a heading + paragraph + gallery of instruct
 2. Understanding Numbers Expressed in Exponential Notation
 3. Order of Operations on Integers (GEMDAS)
 
-Per the paper, Learn is **pre-gameplay only** — not reachable during an adventure (Cognitive Load Theory).
+**Not locked during an adventure** (client, 2026-09-23: "follow the pdf"). The research paper argues Learn should be pre-gameplay only on Cognitive Load Theory grounds, but the mockups show it purely as a Home tab and say nothing about locking it. The mockups win, as §1 states.
 
 ---
 
@@ -328,7 +328,7 @@ before the 2026-09-23 cleanup moved the rest of them. Grep for the name.
 | G3 | Multi-device play, shared session | **absent** | Zero networking; no `rpc`, no HTTP, no INTERNET permission |
 | G4 | Teams & team-name-as-join-code | **absent** | `Game.team_name` is a cosmetic string on the leaderboard row |
 | G5 | Live leaderboard (team + player tabs, correct-response count) | **absent** | Local only; rivals are hardcoded fakes at `Game.RIVALS` |
-| G6 | Admin-set duration, Start/Pause/Resume for everyone | **wrong owner** | Player picks from `DURATION_CHOICES` at hero select; pause menu is player-side (`AdventureHud.toggle_pause()`) — spec says players have **no** pause |
+| G6 | Admin-set duration, Start/Pause/Resume for everyone | **wrong owner** (confirmed by client 2026-09-23: players have no pause, the admin hosts) | Player picks from `DURATION_CHOICES` at hero select; pause menu is player-side (`AdventureHud.toggle_pause()`) — spec says players have **no** pause |
 | G7 | Question bank CRUD + per-question hint + per-question feedback | **absent** | All generated at call time from consts |
 | G8 | Rescue (transfer 10 gems) | **stubbed** | Button exists but `disabled = true`, `QuizOverlay`'s Rescue button |
 | G9 | Elimination at 0 gems → −50 team | **absent** | Gems merely clamp at 0 (`Game._apply()`) |
@@ -336,11 +336,11 @@ before the 2026-09-23 cleanup moved the rest of them. Grep for the name.
 | G11 | Tower-then-circles walk order, Victory Gate | **done** | `AdventureScreen._build_path()`: base camp → T1 → 20 → T2 → 10 → T3 → 10 → gate; `_can_enter_tower/_can_answer/_can_enter_gate` |
 | G12 | Station 2/3 content order | **done** | Swapped in Phase 0; asserted in `test_rules.gd` |
 | G13 | Loading/splash screen | **done** | `scripts/SplashScreen.gd`, routed first from `Main._ready()` |
-| G14 | Login screen, register screen | **absent** | `HeroSelectScreen`'s header explicitly waves this off as "a web concern" |
-| G15 | Home dashboard with 4 tabs + username + character + Log Out | **partial** | `TitleScreen.gd` is a main menu, not a tabbed dashboard |
-| G16 | Team-name entry as its own screen after Start Adventure | **partial** | One optional `LineEdit` on hero select |
+| G14 | Login screen, register screen | **done** | `LoginScreen.gd` (email **or** username + password + Show + Forgot), `RegisterScreen.gd` (email + username + password + role), `ResetScreen.gd`. Email and recovery are client additions beyond the PDF |
+| G15 | Home dashboard with 4 tabs + username + character + Log Out | **done** | `HomeScreen.gd` — username, character, Log Out, the mockup's welcome copy, and the bottom bar Home · Start Adventure · Leaderboard · Learn. Our own art per §1 |
+| G16 | Team-name entry as its own screen after Start Adventure | **done** | `TeamNameScreen.gd` — "Enter Team Name" + **Ready!**, split out of hero select |
 | G17 | Aerial map POV → admin starts → camera swoop transition | **done** (offline) | `AdventureScreen._start_intro()` holds the board frozen with **no joystick** until a tap, click or interact press fires `_swoop()`; `Game.clock_paused` means the wait is free. That's the offline stand-in — Phase 3 routes the admin's Start Game into the same `_swoop()` call instead. The world is exactly 16:9 so `_aerial_zoom()` frames the whole board with no bars; what it cannot do is text — circle numbers and station signs are world-space and illegible at 0.208 |
-| G18 | Learn locked during gameplay | **absent** | Reachable from the pause menu |
+| G18 | Learn locked during gameplay | **not a requirement** | Client 2026-09-23: follow the PDF, which does not lock it. The pause menu never had a Learn entry anyway |
 | G19 | Answer input allows negatives on desktop | **done** | `±` button now built on every platform (`QuizOverlay.gd`) |
 | G20 | Release signing | **absent** | `export_presets.cfg` keystore paths empty |
 
@@ -655,6 +655,7 @@ The cloud **is** the transport now, so there is no separate phase. What remains 
 
 | Date | Change |
 |---|---|
+| 2026-09-23 | **Phase 2 shipped, and the PDFs read back against it.** Login, Register, Forgot Password, the tabbed Home dashboard and the Team Name screen all exist (G14, G15, G16). Client decisions on reading the mockups: sign-in accepts **email or username** (the PDF shows username only; email and recovery are additions), the Home layout stands as built provided nothing from the mockup is missing — so the welcome copy and the character portrait were added verbatim — and **G18 is not a requirement**: follow the PDF, which never locks Learn. Confirmed too that players have no pause button; the admin hosts and pauses everyone (G6, Phase 3). Art stays ours per §1: the mockups are mechanics and wording, not a skin. Username sign-in needs `public.email_for_username()`, a `security definer` function, because GoTrue only knows emails — it lets a username be mapped to an email, which is recorded in the schema as a deliberate tradeoff. |
 | 2026-09-23 | **Fully online — LAN dropped.** Client's call: Supabase is the transport, `NetEnet.gd` is not being built. Q3 answered, Phase 7 folded into Phase 4, `permissions/internet` + `access_network_state` on and verified in the built APK. **LAN is deferred, not ruled out** — so the session call list in §10 stays as the contract, but is *not* being extracted into a `Net.gd` interface while there is one backend; the methods live on `Supabase.gd` until a second implementation makes the abstraction earn its keep. The cost of the decision is recorded next to it: no internet in the room is now no game, where LAN needed only a hotspot. |
 | 2026-09-23 | **Supabase scaffolding + email login.** `supabase/schema.sql` (profiles by trigger off `auth.users`, sessions holding the shared clock, teams whose name is the join code, members, question bank, `team_scores` view, RLS, `sessions`+`members` on the realtime publication), `supabase/README.md` (setup steps), `game/scripts/net/Supabase.gd` (GoTrue + PostgREST over `HTTPRequest`; no SDK exists and none is needed). Then the client added **email login and Forgot Password**, which killed the `<username>@numxventure.local` shim — real inboxes now. Both confirm and recovery send `{{ .Token }}`, a 6-digit code, because a link has nowhere to land in an APK. **Two things owed:** custom SMTP before the pilot (the built-in mailer does ~2 messages/hour, and 40 students register at once), and the gem arithmetic moved into a `security definer` RPC — the `own_member` policy currently lets a client write its own score, which §10 Phase 4 says not to do. Both marked in place. Phase 7 is still gated on **Q3**; this is scaffolding, not a decision to skip Phase 4's LAN. |
 | 2026-09-23 | **Codebase cleanup — no behaviour change.** `AdventureScreen.gd` 2053 → 662 lines, split by the concerns its own section headers already named: `map/MapBuilder`, `map/Stations`, `map/Barricades`, `map/Decor`, all writing into one `map/MapGrid`, plus `AdventureHud` for everything drawn over the board. Every tunable moved to `config/MapCfg.gd` (including ~150 that were unnamed numbers inline and 13 inline asset paths) and every colour and font size to `config/Pal.gd` (95 raw `Color()` literals, one of which — `5a4632` / `5a4630` — was the same brown typo'd in two files). `Ui` grew `screen_panel/dim/scroll/centre_row/mmss` for the blocks the ten menu screens were each copying. `DevTools.gd` deleted (18 lines, one static, one caller). Proved by `tools/board_dump.gd`, identical at every step. Three deliberate visual consolidations: panels are centred now (the quiz was 4px high, the pause menu 9), the title is 26 not 27, and five dim overlays had four alphas between them. Three copy strings unified where the prompt line and its toast said the same thing two ways. |

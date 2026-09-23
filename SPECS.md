@@ -594,11 +594,23 @@ Build the screens against local data; they light up for real in Phase 4.
 - `GameControlsScreen.gd` — duration `hr`/`min` steppers + **Apply Time**; **Start Game** / **Pause Game** / **Resume**; Teams panel with editable team names, live "Joined Members:" lists, **Add Team**. (Draft-only **Randomize Questions** — see Q4.)
 - `QuestionMgmtScreen.gd` — per-station list, each row `prompt (Ans: x)` + **Set** / **Edit** / **Delete**; Add form `Enter Question` · `Enter Hint` · `Enter Answer` → **Add**.
 - `FeedbackScreen.gd` — Select Question dropdown → 300-char feedback textarea with counter → **SAVE FEEDBACK**.
-- `scripts/QuestionStore.gd` — persisted bank: `{station, prompt, answer, hint, feedback, active}`. **Generator stays as fallback**: `QuestionStore.item(station, i)` returns the authored item if the station has enough *active* ones, else tops up from `QuestionGen`. Seed the bank on first run by generating a starter set.
+- `scripts/QuestionStore.gd` — persisted bank: `{station, prompt, answer, hint, feedback, active}`, backed by `public.questions`.
+
+  **Decided 2026-09-23 (client): the admin authors the questions. There is no
+  ready-made set in the shipped app.** `QuestionGen` stays, but as a
+  development convenience behind an explicit **"Use sample questions"** button
+  in Question Management — not as a silent top-up.
+
+  The difference matters: a silent fallback means a teacher who authored four
+  of the eight items for Station 1 never finds out, and four generated
+  questions appear in a graded run. So `QuestionStore.item()` no longer tops
+  up. A station short of active items is a **refusal at Start Game** naming
+  the station and the shortfall, which the teacher can fix by authoring more
+  or by pressing the seed button.
 - Remove the player-side pause button; `AdventureHud.toggle_pause()` becomes admin-driven only.
 - Move duration out of `HeroSelectScreen._pick_duration()` — admin owns it now.
 
-**Verify:** `test_questions.gd` — CRUD round-trips, a station with 3 active authored items still yields 20 items via fallback, feedback >300 chars rejected, deleting a question clears its feedback.
+**Verify:** `test_questions.gd` — CRUD round-trips, feedback >300 chars rejected, deleting a question clears its feedback, a station short of active items refuses to start and names the shortfall, and the seed button fills a station to its item count.
 
 ### Phase 4 — Online session (the big one)
 - Build against `Supabase.gd` and `supabase/schema.sql` directly — no `Net.gd` indirection until a second backend exists. Admin creates a `sessions` row; students join by team name.
@@ -655,6 +667,7 @@ The cloud **is** the transport now, so there is no separate phase. What remains 
 
 | Date | Change |
 |---|---|
+| 2026-09-23 | **The question bank is authored, not generated.** Client: the admin creates the questions; the shipped app has no ready-made set. `QuestionGen` survives as a development convenience behind a **"Use sample questions"** button, not as a silent fallback — a bank that quietly tops itself up means a teacher who wrote four of eight items never learns the other four were invented, in a run that is being graded. A station short of active items now refuses at Start Game and names the shortfall. Phase 3's verify list updated to match. |
 | 2026-09-23 | **Phase 2 shipped, and the PDFs read back against it.** Login, Register, Forgot Password, the tabbed Home dashboard and the Team Name screen all exist (G14, G15, G16). Client decisions on reading the mockups: sign-in accepts **email or username** (the PDF shows username only; email and recovery are additions), the Home layout stands as built provided nothing from the mockup is missing — so the welcome copy and the character portrait were added verbatim — and **G18 is not a requirement**: follow the PDF, which never locks Learn. Confirmed too that players have no pause button; the admin hosts and pauses everyone (G6, Phase 3). Art stays ours per §1: the mockups are mechanics and wording, not a skin. Username sign-in needs `public.email_for_username()`, a `security definer` function, because GoTrue only knows emails — it lets a username be mapped to an email, which is recorded in the schema as a deliberate tradeoff. |
 | 2026-09-23 | **Fully online — LAN dropped.** Client's call: Supabase is the transport, `NetEnet.gd` is not being built. Q3 answered, Phase 7 folded into Phase 4, `permissions/internet` + `access_network_state` on and verified in the built APK. **LAN is deferred, not ruled out** — so the session call list in §10 stays as the contract, but is *not* being extracted into a `Net.gd` interface while there is one backend; the methods live on `Supabase.gd` until a second implementation makes the abstraction earn its keep. The cost of the decision is recorded next to it: no internet in the room is now no game, where LAN needed only a hotspot. |
 | 2026-09-23 | **Supabase scaffolding + email login.** `supabase/schema.sql` (profiles by trigger off `auth.users`, sessions holding the shared clock, teams whose name is the join code, members, question bank, `team_scores` view, RLS, `sessions`+`members` on the realtime publication), `supabase/README.md` (setup steps), `game/scripts/net/Supabase.gd` (GoTrue + PostgREST over `HTTPRequest`; no SDK exists and none is needed). Then the client added **email login and Forgot Password**, which killed the `<username>@numxventure.local` shim — real inboxes now. Both confirm and recovery send `{{ .Token }}`, a 6-digit code, because a link has nowhere to land in an APK. **Two things owed:** custom SMTP before the pilot (the built-in mailer does ~2 messages/hour, and 40 students register at once), and the gem arithmetic moved into a `security definer` RPC — the `own_member` policy currently lets a client write its own score, which §10 Phase 4 says not to do. Both marked in place. Phase 7 is still gated on **Q3**; this is scaffolding, not a decision to skip Phase 4's LAN. |

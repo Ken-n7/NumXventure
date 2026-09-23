@@ -52,7 +52,9 @@ One continuous path: base camp → Station 1 → 8 circles → Station 2 → 3 c
 
 Each station's keep is its own building — **Blue Monastery**, **Yellow Archery**, **Red Barracks** — with two houses of the same livery either side. Every walk-up circle is a **Tower** in that station's livery, so a stop always reads as a stop and never as a keep.
 
-The base camp sits on its own small island at the map's right, joined to Station 1's island by a **land bridge**. Station 1's monastery stands on island 1's own ground where that bridge lands, and a **line of boulders** runs from shore to shore across the island just west of it, with a giant knight filling its one gap — so the walk cannot begin before the first station has been entered. Island 2 is the same idea in a different shape: a second land bridge lands in its south-east corner, where Station 2's outpost stands, and its own giant guard holds a **curved fence of boulders swung right round that corner** — water on one side of it to water on the other, with one gap where the road leaves west for the circles. **One rule for every guard — his own station's briefing stands him down.** What keeps the walk in order is not the guards but `_can_enter_tower()`: a station only opens its briefing while the current item belongs to it, so reaching Station 2's door early gets you nothing but the view. Only the last crossing, on to Station 3's island, is still a causeway that rises.
+The base camp sits on its own small island at the map's right, joined to Station 1's island by a **land bridge**. Station 1's monastery stands on island 1's own ground where that bridge lands, and a **line of boulders** runs from shore to shore across the island just west of it, with a giant knight filling its one gap — so the walk cannot begin before the first station has been entered. Island 2 is the same idea in a different shape: a second land bridge lands in its south-east corner, where Station 2's outpost stands, and its own giant guard holds a **curved fence of boulders swung right round that corner** — water on one side of it to water on the other, with one gap where the road leaves west for the circles. Island 3 is a third bridge and a third guard, straight across the walk like Station 1's, with the three red towers and the Victory Gate all past it.
+
+**One rule for every guard — his own station's briefing stands him down.** Every crossing is a land bridge; nothing rises out of the sea any more. What keeps the walk in order is not the guards but `_can_enter_tower()`: a station only opens its briefing while the current item belongs to it, so reaching a later station's door early gets you nothing but the view.
 
 **One circle = one item.** Strictly sequential — a player cannot reach circle *n+1* before resolving circle *n*. Item counts are fixed per station.
 
@@ -361,11 +363,12 @@ progression either — the sequential rule lived only in `_can_answer()`.
   carries him. The rocks stay too — laid on every build, briefed or not, and
   only the gap ever opens. A restart that had already briefed posts him at that
   same spot as scenery, never as `_knight`, which means "the blocker".
-  **Why a knight and not a causeway here:** the crossing has to be walkable for the
-  station on the far side to be reachable at all, so the choke sits *between*
-  Station 1 and the rest of the island. `test_collisions.gd` proves it both ways —
-  with him posted no circle is reachable from camp; dismissed, Station 1's eight
-  are — and separately that both ends of every line run into water.
+  **Why a guard and not a causeway:** the crossing has to be walkable for the
+  station on the far side to be reachable at all — you have to get to a station to
+  be briefed by it — so the choke sits *between* a station and its own circles,
+  never on the water. `test_collisions.gd` proves it by walking the ground: with
+  the three posted, nothing past any of them is reachable from camp; stood down one
+  at a time, each station's circles appear in turn.
 - ✅ **A fence, where a line will not fit** (`_lay_arc()`). Island 2's walk lands in
   its south-east corner and loops back on itself to reach the seam, so a line
   square across it always strands the last circle on the station's side — every
@@ -381,19 +384,16 @@ progression either — the sequential rule lived only in `_can_answer()`.
 - ✅ **Four islands** (`AdventureScreen.ISLANDS`), on a world grown
   from 44×30 to **96×54** — 3072×1728, deliberately 16:9 so the whole-board view
   fills the screen exactly.
-- ✅ **Causeways as the gate**, on the one seam that is not bridged. `BRIDGED_SEAMS`
-  lists the crossings that are land bridges instead, and each causeway carries its
-  own `seam` so the rest of the file stays right however many are skipped.
-  `_find_causeways()` takes the water along the line between two island centres:
-  the shortest crossing, and the *only* one, since everything either side is sea. Stepping stones and a sign mark it early;
-  `open_causeway()` stamps the cells into `_land`, repaints the shoreline with
-  `_retile()`, dries the same stones out and puffs dust. It fires from
-  `_refresh_causeways()` the moment that station runs out of circles.
-  **Why islands and not a boulder:** *one* boulder on open ground can be walked
-  around. This is enforced by the terrain, and `test_collisions.gd` proves it by
-  flood-filling from the base camp rather than trusting a flag. (A whole line of
-  them, shore to shore, cannot be walked around either — that is the gate on island
-  1, where there is no channel to use.)
+- ✅ **Every seam is a land bridge** (`BRIDGED_SEAMS`), so the causeway that used to
+  rise out of the sea is gone — `_find_causeways()`, `_dress_causeways()`,
+  `open_causeway()` and their stepping stones and signage with it. It is one
+  `git revert` away if a crossing ever wants to be terrain again; nothing in the
+  board reached it any more.
+  **Why a line of boulders and not a channel:** *one* boulder on open ground can be
+  walked around, which is what made a channel the original answer. A whole line of
+  them cannot, and neither can a fence — and unlike a channel, a line can sit
+  between a station and its own circles, which is the one place a gate can go if
+  briefing the station is what opens it.
 - ✅ **~270px between stops at the tightest** (was 68), one authored trail per
   island (`TRAILS`).
   ~65s of walking in a 600s adventure; `PLAYER_SPEED` is the knob if that is long.
@@ -427,10 +427,10 @@ progression either — the sequential rule lived only in `_can_answer()`.
   screenshot, which is how it was found.
 
 **Verified:** all five suites pass — `test_rules`, `test_collisions` (walls, 40
-circles, sequential gating, **flood-fill reachability per island**, causeways shut
-then open), `smoke_test` (142), `e2e_test` (393), `touch_test` (14). Plus eleven
-screenshots off a real GL context: aerial, camp, each outpost, both causeway
-states, the card, the gate.
+circles, sequential gating, **flood-fill reachability per island**, every guard
+posted then stood down), `smoke_test` (142), `e2e_test` (393), `touch_test` (14). Plus eleven
+screenshots off a real GL context: aerial, camp, each outpost, each gate posted
+and open, the card, the Victory Gate.
 
 > **Still owed:** region gating is a *visual* expression of the sequential rule the
 > PDFs already specify, not a new rule, so nothing is owed the client here. Next is
@@ -533,6 +533,7 @@ Build the screens against local data; they light up for real in Phase 4.
 | 2026-09-22 | **Dev drawer** (`scripts/DevDrawer.gd`), debug builds only: a slide-out panel on the left of the Adventure map with Skip Station, Teleport, Aerial, Open Gates, Fast Walk, Freeze, +1:00, Show Walls and End Run. `TOOLS` is the table — one line adds a button. Skip Station is what the later islands are tested through, so `test_collisions.gd` now walks the whole gating ladder with it as well. The joystick's zone shrinks to the strip the drawer is not using, since it claims the left half of the canvas and marks those touches handled. |
 | 2026-09-22 | Per feedback — *"the player have to interact with the station first to make the knight move like how it is in station 1"* — **one rule for every guard: his own station's briefing stands him down**, so a station always stands on the near side of its own gate. That needed island 2 re-routed: its walk looped back on itself, and no line across it isolated all three circles (every column checked; the one horizontal cut that worked ran through a circle's doorstep). It now lands in the south-west and runs east, `TRAILS[1]` ends in island 1's north-west to meet it, and `BARRICADES` lost its `opens`/`step` fields since there is only the one rule left. Sideways-lifted keeps put their signage below the outpost. |
 | 2026-09-22 | Island 2's walk put back the way it was (bridge into the south-east corner, circles looping west–north–east) and its gate became a **curve**: a fence of boulders swung round Station 2's corner from water to water, gap on the road out, per *"the boulder extends from it from its left side curving towards the islands edge"*. Station 2 moved back and right into that corner. `BARRICADES` entries now take `t` for a straight line or `arc` for a fence; `_assert_line()` stopped checking that a line's ends run into water, since that is a statement about straight lines and the flood fill answers "does it hold" for both shapes. |
+| 2026-09-22 | Island 3 gets the same treatment: the last causeway became a **land bridge with a guard**, straight across the walk like Station 1's, with the red towers and the Victory Gate past it. With every seam bridged the causeway machinery had no users left, so it is deleted — `_find_causeways()`, `_dress_causeways()`, `_refresh_causeways()`, `open_causeway()`, `_items_through()`, `CAUSEWAY_HALF`, the stepping stones and the signage. One `git revert` away if a crossing ever wants to be terrain again. |
 | 2026-09-21 | Created from the three PDFs. |
 | 2026-09-22 | Map redesign: three islands on a 96×54 (16:9) world, causeway gates proved by flood fill, ~208px circle spacing, station outposts, per-island props, tap-a-circle card, `PLAY_ZOOM`. |
 | 2026-09-22 | Aerial POV holds until a **tap anywhere** (offline stand-in for the admin's Start Game) and hides the joystick while frozen; fixed two bugs a real tap uncovered (input swallowed by the root Control, clock unpaused by a restart race). |

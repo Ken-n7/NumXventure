@@ -88,7 +88,7 @@ func _build() -> void:
 	scroll.add_child(sub)
 
 	var back := Ui.button("Back", 110, 44, Ui.RED)
-	back.pressed.connect(func() -> void: main.open("title"))
+	back.pressed.connect(func() -> void: main.open("home"))
 	Ui.centre_row(box, back)
 
 	_show(0)

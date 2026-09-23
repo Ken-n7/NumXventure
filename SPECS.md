@@ -29,7 +29,9 @@ Tagline: *Explore. Solve. Conquer.*
 | Controls clock | no | yes (start / pause / resume / duration) |
 | Pause button | **none** | yes — pauses *every* player at once |
 
-Registration: **Username** (globally unique) + **Password** (min 8 chars, with Show toggle) + **Select Role** dropdown.
+Registration: **Email** + **Username** (globally unique) + **Password** (min 8 chars, with Show toggle) + **Select Role** dropdown.
+
+**Login is by email, and there is a Forgot Password flow** (client, 2026-09-23 — not in any PDF). The username stays: it is the unique display name on Home and both leaderboards. Recovery is a **6-digit emailed code**, not a link — a link needs a web page or an Android deep link to land on, and the app has neither. See `supabase/README.md`.
 After registering, the player **picks a character**; that character appears beside their username on Home.
 
 ---
@@ -346,11 +348,20 @@ before the 2026-09-23 cleanup moved the rest of them. Grep for the name.
 
 ## 10. Roadmap
 
-### Transport decision (answers "will both LAN and cloud work?")
+### Transport decision — **cloud only** *(client, 2026-09-23)*
 
-**Yes — build LAN first, cloud second, behind one interface.** The game must not know which is in use.
+**Decided: fully online, Supabase. LAN is not being built.** This reverses the
+"LAN first" plan below it and answers **Q3** in practice — the session is
+literally internet-based, so what the paper calls "online" is what ships.
 
-Create a single autoload `scripts/Net.gd` exposing exactly what the session needs:
+**LAN is not ruled out, it is undecided.** If school WiFi turns out to be worse
+than a phone hotspot during the pilot, `NetEnet.gd` comes back. So the call list
+below stays the contract — but it is **not being built as an abstraction today**.
+There is one backend, so the methods live directly on the Supabase client; an
+interface with one implementation is the thing to extract on the day a second
+one exists, not before. Naming the calls now is what makes that day cheap.
+
+What the session needs, wherever it ends up running:
 
 ```
 signal session_state(state)      # lobby / running / paused / ended
@@ -366,12 +377,20 @@ func rescue(target_username) -> void
 func admin_start() / admin_pause() / admin_resume() / admin_set_duration(sec)
 ```
 
-- **Backend A — LAN (`NetEnet.gd`)**: Godot's built-in `ENetMultiplayerPeer` + `@rpc`. Admin device hosts; students join by IP or auto-discover over UDP broadcast. Accounts and question bank live in a `ConfigFile`/SQLite on the host. No internet, no hosting bill, survives a dead school WiFi via a phone hotspot. **Ship this first.**
-- **Backend B — Cloud (`NetCloud.gd`)**: PocketBase or Supabase behind `HTTPRequest` + a realtime subscription. Same signals, same methods. Needs `INTERNET` permission in `export_presets.cfg` and a deployed instance.
+**Shipping: Supabase** — `game/scripts/net/Supabase.gd` over `HTTPRequest`
+(GoTrue + PostgREST), schema in `supabase/schema.sql`, setup in
+`supabase/README.md`. Realtime carries the pause and the live leaderboard, so
+nothing polls. `permissions/internet` and `permissions/access_network_state` are
+on in `export_presets.cfg` and verified in the built APK.
 
-A runtime toggle on the login screen (`Server: LAN / Online`) picks the backend. This is the one abstraction worth having — there are genuinely two implementations, both requested.
+**Deferred, undecided — LAN (`NetEnet.gd`)**: `ENetMultiplayerPeer` + `@rpc`,
+admin device hosts, no hosting bill, survives dead school WiFi via a hotspot.
+Revisit if the pilot's network disappoints.
 
-> ⚠️ The paper calls the app "online". If the research write-up must literally be online, Backend B becomes Phase 8-blocking rather than optional. See Q3.
+> ⚠️ **What going cloud-only costs.** No internet in the room is now no game at
+> all, where LAN would have needed only a hotspot. Before the pilot: check the
+> room's connection, and have a hotspot plan. This is a real risk the client
+> accepted, not an oversight.
 
 ---
 
@@ -581,14 +600,15 @@ Build the screens against local data; they light up for real in Phase 4.
 
 **Verify:** `test_questions.gd` — CRUD round-trips, a station with 3 active authored items still yields 20 items via fallback, feedback >300 chars rejected, deleting a question clears its feedback.
 
-### Phase 4 — LAN session (the big one)
-- `Net.gd` + `NetEnet.gd` per the interface above. Admin hosts on `admin_start()`; students `join(team_name, username)`.
+### Phase 4 — Online session (the big one)
+- Build against `Supabase.gd` and `supabase/schema.sql` directly — no `Net.gd` indirection until a second backend exists. Admin creates a `sessions` row; students join by team name.
 - Team name is the join code — it must match a team the admin created, or the join is refused.
 - Host authoritative: shared clock, one pause pauses everyone, gem deltas validated server-side (never trust the client's arithmetic).
 - Live leaderboard streamed to both dashboards: **Team Ranking** (Rank · Team · Gems) and **Player Ranking** (Rank · Username · Gems · Correct Responses). Player-facing board shows the team tab only. Delete the hardcoded rivals at `Game.RIVALS`.
-- Accounts + question bank move to the host so every player gets identical items.
+- Accounts + question bank live in Postgres, so every player gets identical items.
+- **Gem arithmetic moves server-side**: a `security definer` RPC (`apply_answer`, `spend_hint`, `skip_item`) does the sums, and the `own_member` RLS policy narrows to `finished`/`hero`. Until that lands a client can write its own score — flagged in `schema.sql`.
 
-**Verify:** headless two-instance test — launch a host and two clients, join a team, admin starts, both clocks agree within 1s, admin pause freezes both, scores aggregate per team.
+**Verify:** two headless instances against a real Supabase project — two accounts join one team, the admin starts, both clocks agree within 1s, the admin pause reaches both over realtime, scores aggregate per team.
 
 ### Phase 5 — Rescue & elimination
 - Enable the Rescue dropdown (`QuizOverlay`'s Rescue button): lists teammates, transfers **10 gems** (−10 sender, +10 receiver), **one assist per sender per adventure**.
@@ -603,8 +623,8 @@ Build the screens against local data; they light up for real in Phase 4.
 - Android: generate a release keystore, fill `export_presets.cfg`, add `INTERNET` permission if the cloud backend ships.
 - Pilot-test build, per the paper's Develop phase.
 
-### Phase 7 — Cloud backend *(optional / if "online" is required)*
-`NetCloud.gd` against PocketBase or Supabase, same `Net.gd` surface. Adds cross-network play and persistent research data for the Evaluate phase.
+### Phase 7 — ~~Cloud backend~~ *(folded into Phase 4, 2026-09-23)*
+The cloud **is** the transport now, so there is no separate phase. What remains here is the research payoff Supabase brings for free: Postgres holds every session, so the paper's Evaluate phase has real data to query instead of a spreadsheet.
 
 ---
 
@@ -614,7 +634,7 @@ Build the screens against local data; they light up for real in Phase 4.
 |---|---|---|---|
 | Q1 | **P5** 🔴 | **Rescue rules.** One assist per *sender* per adventure, or one per *receiver*? Can a player be rescued repeatedly? Does the receiver accept, or is it instant? Can you rescue someone already eliminated? | Changes the whole team-strategy layer and the UI of the Rescue dropdown. |
 | Q2 | **P5** 🔴 | **Elimination.** Does an eliminated player stop playing entirely, or keep answering at 0 gems? Can gems go negative? | Currently gems clamp at 0, so elimination can never trigger. |
-| Q3 | **P7** 🔴 | **"Online" in the paper.** Does the research write-up require literal internet-based play, or is a classroom LAN/hotspot session acceptable? | Decides whether Phase 7 is optional or mandatory. |
+| ~~Q3~~ | ~~P7~~ | ~~**"Online" in the paper."**~~ **Answered 2026-09-23: fully online, no LAN.** Supabase is the transport; `NetEnet.gd` is deferred and undecided. See the transport decision in §10. | — |
 | Q4 | P3 | **Randomize Questions** appears in the draft layout's Game Controls but was dropped from the newest PDF. Keep it? | If kept, it shuffles item order per player — which weakens fair team comparison. |
 | Q5 | **P3** 🔴 | **"Set"** button in Question Management — what does it do? (Mark the question active for this round? Set it as the item for a specific circle?) | Three plausible meanings; affects the `QuestionStore` schema. |
 | ~~Q6~~ | ~~P1~~ | **Victory Gate.** ~~What does the player see on arrival?~~ **Answered 2026-09-21: the summary.** Walking in calls `Game.end_adventure()` and the summary opens. A wait-for-teammates lobby only means something once Phase 4 networking exists; revisit then. | — |
@@ -635,6 +655,8 @@ Build the screens against local data; they light up for real in Phase 4.
 
 | Date | Change |
 |---|---|
+| 2026-09-23 | **Fully online — LAN dropped.** Client's call: Supabase is the transport, `NetEnet.gd` is not being built. Q3 answered, Phase 7 folded into Phase 4, `permissions/internet` + `access_network_state` on and verified in the built APK. **LAN is deferred, not ruled out** — so the session call list in §10 stays as the contract, but is *not* being extracted into a `Net.gd` interface while there is one backend; the methods live on `Supabase.gd` until a second implementation makes the abstraction earn its keep. The cost of the decision is recorded next to it: no internet in the room is now no game, where LAN needed only a hotspot. |
+| 2026-09-23 | **Supabase scaffolding + email login.** `supabase/schema.sql` (profiles by trigger off `auth.users`, sessions holding the shared clock, teams whose name is the join code, members, question bank, `team_scores` view, RLS, `sessions`+`members` on the realtime publication), `supabase/README.md` (setup steps), `game/scripts/net/Supabase.gd` (GoTrue + PostgREST over `HTTPRequest`; no SDK exists and none is needed). Then the client added **email login and Forgot Password**, which killed the `<username>@numxventure.local` shim — real inboxes now. Both confirm and recovery send `{{ .Token }}`, a 6-digit code, because a link has nowhere to land in an APK. **Two things owed:** custom SMTP before the pilot (the built-in mailer does ~2 messages/hour, and 40 students register at once), and the gem arithmetic moved into a `security definer` RPC — the `own_member` policy currently lets a client write its own score, which §10 Phase 4 says not to do. Both marked in place. Phase 7 is still gated on **Q3**; this is scaffolding, not a decision to skip Phase 4's LAN. |
 | 2026-09-23 | **Codebase cleanup — no behaviour change.** `AdventureScreen.gd` 2053 → 662 lines, split by the concerns its own section headers already named: `map/MapBuilder`, `map/Stations`, `map/Barricades`, `map/Decor`, all writing into one `map/MapGrid`, plus `AdventureHud` for everything drawn over the board. Every tunable moved to `config/MapCfg.gd` (including ~150 that were unnamed numbers inline and 13 inline asset paths) and every colour and font size to `config/Pal.gd` (95 raw `Color()` literals, one of which — `5a4632` / `5a4630` — was the same brown typo'd in two files). `Ui` grew `screen_panel/dim/scroll/centre_row/mmss` for the blocks the ten menu screens were each copying. `DevTools.gd` deleted (18 lines, one static, one caller). Proved by `tools/board_dump.gd`, identical at every step. Three deliberate visual consolidations: panels are centred now (the quiz was 4px high, the pause menu 9), the title is 26 not 27, and five dim overlays had four alphas between them. Three copy strings unified where the prompt line and its toast said the same thing two ways. |
 | 2026-09-23 | **Three suites were green while broken.** GDScript aborts the function on a runtime error and carries on, so `e2e_test` reported PASS having run 12 of its 267 checks, `test_collisions` erred on every run and exited 0, and `tools/map_shot.gd` — windowed, so not in any runner — called a method that had moved for a whole refactor. `tools/run_tests.sh` now runs everything under a timeout and fails on `SCRIPT ERROR`; `TestCase.finish()` refuses to pass a suite that did not reach its own last line. |
 | 2026-09-22 | Ring marker deleted: the tower **is** the interactable, and a bobbing **"!"** over the hero says when pressing E/GO would actually do something (station keeps and the Victory Gate too, not just circles). No "current" marker any more — identical towers, the floating number is the progress cue. Taps now aim at the tower, not the bare grass the ring used to sit on. `_can_act_on()` is the one rule, shared by the "!" and the prompt line. |

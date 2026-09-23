@@ -58,15 +58,8 @@ func setup(_data: Dictionary) -> void:
 
 
 func _build() -> void:
-	var dim := ColorRect.new()
-	dim.color = Color(0.10, 0.07, 0.12, 0.9)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(dim)
-
-	var panel := Ui.panel(Vector2(600, 320), "Learn before you adventure")
-	panel.position = Vector2(20, 20)
-	add_child(panel)
-	var box: VBoxContainer = panel.get_child(0) as VBoxContainer
+	Ui.dim(self)
+	var box := Ui.screen_panel(self, Vector2(600, 320), "Learn before you adventure")
 	box.add_theme_constant_override("separation", 8)
 
 	var tabs := HBoxContainer.new()
@@ -79,20 +72,15 @@ func _build() -> void:
 		tabs.add_child(b)
 	box.add_child(tabs)
 
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 150)
-	scroll.add_theme_constant_override("scrollbar_margin", 0)
-	box.add_child(scroll)
+	var scroll := Ui.scroll(box, 150)
 
 	var sub := VBoxContainer.new()
 	sub.add_theme_constant_override("separation", 10)
 	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sub.custom_minimum_size = Vector2(WRAP_W, 0)
-	_content = Art.label("", 15, Color("2a201a"))
-	_examples = Art.label("", 18, Color("7a5216"), HORIZONTAL_ALIGNMENT_CENTER)
-	_rule = Art.label("", 12, Color("3a5a8c"), HORIZONTAL_ALIGNMENT_CENTER)
+	_content = Art.label("", Pal.BODY, Pal.INK)
+	_examples = Art.label("", Pal.H2, Pal.BRONZE, HORIZONTAL_ALIGNMENT_CENTER)
+	_rule = Art.label("", Pal.TINY, Pal.INFO, HORIZONTAL_ALIGNMENT_CENTER)
 	for l in [_content, _examples, _rule]:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(WRAP_W, 0)
@@ -101,10 +89,7 @@ func _build() -> void:
 
 	var back := Ui.button("Back", 110, 44, Ui.RED)
 	back.pressed.connect(func() -> void: main.open("title"))
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(back)
-	box.add_child(row)
+	Ui.centre_row(box, back)
 
 	_show(0)
 
@@ -119,4 +104,4 @@ func _show(idx: int) -> void:
 	_rule.text = "Rule reminder: " + l[4]
 	for i in 3:
 		_tab_buttons[i].add_theme_color_override("font_color",
-				Color("ffe9a8") if i == idx else Color(1, 1, 1, 0.96))
+				Pal.CREAM if i == idx else Color(1, 1, 1, 0.96))

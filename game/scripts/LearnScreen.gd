@@ -7,10 +7,27 @@ var main: Control
 
 const WRAP_W := 540.0
 
+## `[tab, heading, intro, bullets, examples, rule]`. The tab is short because a
+## Button's minimum size grows with its text and the mockup's headings run to
+## 54 characters; the heading itself is shown in the body, where the wording
+## contract actually matters.
+##
+## The three topics, in the mockups' order and their words: headings and the
+## opening paragraph are taken verbatim from the Learn screen, because §1 makes
+## the PDFs a wording contract even though the art is ours. The bullets and
+## examples below each are ours -- they teach the rule rather than restate the
+## heading, and no PDF contradicts them.
+##
+## Still owed (Q13): the mockup shows a gallery of instructional images under
+## each heading. Nobody has said who supplies them.
 static var LESSONS := [
 	[
 		"Basic Operations",
-		"Operations with integers (whole numbers and negatives).",
+		"Basic Operations on Integers",
+		"This involves addition, subtraction, multiplication, and division of "
+		+ "positive and negative whole numbers. Understanding these operations "
+		+ "and their rules will help you solve numerical expressions accurately "
+		+ "and confidently.",
 		[
 			"Addition: same signs → add, keep the sign. Different signs → subtract the smaller from the bigger, keep the bigger's sign.",
 			"Subtraction: rewrite as adding the opposite: a − b = a + (−b).",
@@ -22,7 +39,10 @@ static var LESSONS := [
 	],
 	[
 		"Exponential Notation",
-		"An exponent says how many times to multiply the base by itself.",
+		"Understanding Numbers Expressed in Exponential Notation",
+		"The mastery of basic multiplication facts is necessary. You should not "
+		+ "multiply the base and its exponent but multiply the base by the "
+		+ "number of times as shown in the exponent.",
 		[
 			"bⁿ means b multiplied by itself n times (n ≥ 2 in this adventure).",
 			"The base is the number being multiplied; the exponent is the little power number.",
@@ -34,9 +54,11 @@ static var LESSONS := [
 	],
 	[
 		"Order of Operations",
-		"Not everything reads left to right — follow PEMDAS.",
+		"Order of Operations on Integers",
+		"Expressions can be solved by following the rules on order of "
+		+ "operations. The GEMDAS rule.",
 		[
-			"Parentheses first: (2 + 3) × 4 = 5 × 4 = 20.",
+			"Grouping symbols first: (2 + 3) × 4 = 5 × 4 = 20.",
 			"Then exponents: 3 + 2² = 3 + 4 = 7.",
 			"Then Multiply / Divide, left to right.",
 			"Finally Add / Subtract, left to right: 3 + 6 × 2 = 3 + 12 = 15.",
@@ -66,7 +88,7 @@ func _build() -> void:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 8)
 	for i in LESSONS.size():
-		var b := Ui.button(LESSONS[i][0], 150, 40, Ui.SMALL_RED if i == 1 else Ui.SMALL)
+		var b := Ui.button(LESSONS[i][0], 150, Ui.H, Ui.SMALL_RED if i == 1 else Ui.SMALL)
 		b.pressed.connect(func(idx := i) -> void: _show(idx))
 		_tab_buttons.append(b)
 		tabs.add_child(b)
@@ -87,7 +109,7 @@ func _build() -> void:
 		sub.add_child(l)
 	scroll.add_child(sub)
 
-	var back := Ui.button("Back", 110, 44, Ui.RED)
+	var back := Ui.button("Back", Ui.W_WIDE, Ui.H, Ui.RED)
 	back.pressed.connect(func() -> void: main.open("home"))
 	Ui.centre_row(box, back)
 
@@ -97,11 +119,11 @@ func _build() -> void:
 func _show(idx: int) -> void:
 	var l: Array = LESSONS[idx]
 	var bullets := ""
-	for gd in l[2]:
+	for gd in l[3]:
 		bullets += "•  " + gd + "\n"
-	_content.text = "%s\n%s\n\n%s" % [l[0], l[1], bullets]
-	_examples.text = "Worked examples:\n" + "\n".join(l[3])
-	_rule.text = "Rule reminder: " + l[4]
+	_content.text = "%s\n%s\n\n%s" % [l[1], l[2], bullets]
+	_examples.text = "Worked examples:\n" + "\n".join(l[4])
+	_rule.text = "Rule reminder: " + l[5]
 	for i in LESSONS.size():
 		_tab_buttons[i].add_theme_color_override("font_color",
 				Pal.CREAM if i == idx else Color(1, 1, 1, 0.96))

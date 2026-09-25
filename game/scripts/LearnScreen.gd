@@ -80,7 +80,8 @@ func setup(_data: Dictionary) -> void:
 
 
 func _build() -> void:
-	Ui.dim(self)
+	# No scrim: Main's moving scene is the background (Backdrop.gd), and a
+	# 90% dim over it would show nothing on this screen alone.
 	var box := Ui.screen_panel(self, Vector2(600, 320), "Learn before you adventure")
 	box.add_theme_constant_override("separation", 8)
 

@@ -24,6 +24,7 @@ Tagline: *Explore. Solve. Conquer.*
 
 | | Player (student) | Admin (teacher, or any student) |
 |---|---|---|
+| 2026-09-25 | **Victory Gate sign fixed.** The castle carried one `Art.cell` of BigRibbons — only the ribbon's left end piece, which read as a stray red flag on the roof — with small "VICTORY GATE" text laid over the roof tiles. Now the full three-piece red banner (`Ui.ribbon`, as the HUD uses) reading "Victory Gate", standing clear above the roof (`MapCfg.GATE_RIBBON_*`). |
 | 2026-09-25 | **Water rocks no longer blink** (map and menu backdrop). `Art.frames()` slices a sheet by scanning for transparent gaps, but the Water Rocks' surf spills across their frame borders, so the scan produced 6px slivers and a double-wide frame among the real ones and the rocks flickered in and out. They are a clean 16 × 64px strip, now cut on that grid (`Art.anim_sprite(..., cols)`). |
 | 2026-09-25 | **Dev explore mode: walk the map with no session.** Debug builds only (`OS.is_debug_build()`, so never in a release export). Two ways in: the dev navigator's **explore map** button (D), or launch with `godot --path game -- --explore`. The map opens straight away — no intro, no session lookup, no Realtime, a 2-hour clock — and flashes "Explore mode — nothing is scored". The map's dev drawer (Teleport, Skip Station, Open Gates, Fast Walk, Show Walls) works as usual. |
 | Creates account | yes | yes — **anyone can register as admin**, no approval |

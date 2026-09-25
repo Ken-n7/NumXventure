@@ -5,7 +5,7 @@ extends Control
 
 var main: Control
 
-const WRAP_W := 540.0
+const WRAP_W := 380.0
 
 ## `[tab, heading, intro, bullets, examples, rule]`. The tab is short because a
 ## Button's minimum size grows with its text and the mockup's headings run to
@@ -68,10 +68,16 @@ static var LESSONS := [
 	],
 ]
 
+## Which station teaches each topic, for its colour: basics are Station 1
+## (blue), exponents Station 3 (red), order of operations Station 2 (yellow).
+const TOPIC_COLOUR := [Pal.INFO, Pal.WRONG, Pal.AMBER]
+
+var _heading: Label
 var _content: Label
 var _examples: Label
 var _rule: Label
 var _tab_buttons: Array = []
+var _scroll: ScrollContainer
 
 
 func setup(_data: Dictionary) -> void:
@@ -79,40 +85,62 @@ func setup(_data: Dictionary) -> void:
 	_build()
 
 
+## Topics down the left as cards in their station's colour, the lesson in a
+## reading pane beside them. The tabs across the top were three equal buttons
+## (one of them always red, whichever was open) over a pane that scrolled
+## 150px of text; a column of topics leaves the reading its full height.
 func _build() -> void:
-	# No scrim: Main's moving scene is the background (Backdrop.gd), and a
-	# 90% dim over it would show nothing on this screen alone.
-	var box := Ui.screen_panel(self, Vector2(600, 320), "Learn before you adventure")
-	box.add_theme_constant_override("separation", 8)
+	# No scrim: Main's moving scene is the background (Backdrop.gd).
+	var box := Ui.back_panel(self, Vector2(600, 330), "Learn before you adventure",
+		func() -> void: main.open("home"))
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 12)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(body)
 
-	var tabs := HBoxContainer.new()
-	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-	tabs.add_theme_constant_override("separation", 8)
+	var topics := VBoxContainer.new()
+	topics.custom_minimum_size = Vector2(160, 0)
+	topics.add_theme_constant_override("separation", 6)
+	body.add_child(topics)
 	for i in LESSONS.size():
-		var b := Ui.button(LESSONS[i][0], 150, Ui.H, Ui.SMALL_RED if i == 1 else Ui.SMALL)
+		var b := Button.new()
+		b.text = LESSONS[i][0]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size = Vector2(160, 44)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.add_theme_font_size_override("font_size", Pal.SMALL)
 		b.pressed.connect(func(idx := i) -> void: _show(idx))
 		_tab_buttons.append(b)
-		tabs.add_child(b)
-	box.add_child(tabs)
+		topics.add_child(b)
 
-	var scroll := Ui.scroll(box, 150)
-
+	_scroll = ScrollContainer.new()
+	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(_scroll)
 	var sub := VBoxContainer.new()
-	sub.add_theme_constant_override("separation", 10)
+	sub.add_theme_constant_override("separation", 8)
 	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sub.custom_minimum_size = Vector2(WRAP_W, 0)
+	_scroll.add_child(sub)
+	_heading = Art.label("", Pal.H2, Pal.TITLE)
 	_content = Art.label("", Pal.BODY, Pal.INK)
-	_examples = Art.label("", Pal.H2, Pal.BRONZE, HORIZONTAL_ALIGNMENT_CENTER)
-	_rule = Art.label("", Pal.TINY, Pal.INFO, HORIZONTAL_ALIGNMENT_CENTER)
-	for l in [_content, _examples, _rule]:
+	_examples = Art.label("", Pal.LABEL, Pal.BRONZE)
+	_rule = Art.label("", Pal.SMALL, Pal.INFO)
+	for l in [_heading, _content, _examples, _rule]:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(WRAP_W, 0)
-		sub.add_child(l)
-	scroll.add_child(sub)
-
-	var back := Ui.button("Back", Ui.W_WIDE, Ui.H, Ui.RED)
-	back.pressed.connect(func() -> void: main.open("home"))
-	Ui.centre_row(box, back)
+	sub.add_child(_heading)
+	sub.add_child(_content)
+	# Worked examples on a card of their own: the part a student looks back at.
+	var card := PanelContainer.new()
+	var face := StyleBoxFlat.new()
+	face.bg_color = Pal.PARCHMENT.darkened(0.06)
+	face.set_corner_radius_all(4)
+	face.set_content_margin_all(8)
+	card.add_theme_stylebox_override("panel", face)
+	card.add_child(_examples)
+	sub.add_child(card)
+	sub.add_child(_rule)
 
 	_show(0)
 
@@ -122,9 +150,27 @@ func _show(idx: int) -> void:
 	var bullets := ""
 	for gd in l[3]:
 		bullets += "•  " + gd + "\n"
-	_content.text = "%s\n%s\n\n%s" % [l[1], l[2], bullets]
-	_examples.text = "Worked examples:\n" + "\n".join(l[4])
+	_heading.text = l[1]
+	_heading.add_theme_color_override("font_color", TOPIC_COLOUR[idx].darkened(0.2))
+	_content.text = "%s\n\n%s" % [l[2], bullets.strip_edges()]
+	_examples.text = "Worked examples\n" + "\n".join(l[4])
 	_rule.text = "Rule reminder: " + l[5]
+	_scroll.scroll_vertical = 0
+	# The open topic filled in its colour; the rest edged in theirs.
 	for i in LESSONS.size():
-		_tab_buttons[i].add_theme_color_override("font_color",
-				Pal.CREAM if i == idx else Color(1, 1, 1, 0.96))
+		var b: Button = _tab_buttons[i]
+		var on := i == idx
+		for st in ["normal", "hover", "pressed", "focus"]:
+			var face := StyleBoxFlat.new()
+			face.bg_color = Color(TOPIC_COLOUR[i], 0.22 if on else (0.1 if st == "hover" else 0.04))
+			face.border_color = TOPIC_COLOUR[i]
+			face.border_width_left = 6
+			face.set_border_width(SIDE_TOP, 2 if on else 1)
+			face.set_border_width(SIDE_RIGHT, 2 if on else 1)
+			face.set_border_width(SIDE_BOTTOM, 2 if on else 1)
+			face.set_corner_radius_all(4)
+			face.content_margin_left = 12
+			face.content_margin_right = 6
+			b.add_theme_stylebox_override(st, face)
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(c, Pal.TITLE if on else Pal.INK)

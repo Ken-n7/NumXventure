@@ -114,6 +114,7 @@ func _build() -> void:
 		topics.add_child(b)
 
 	_scroll = ScrollContainer.new()
+	DragScroll.attach(_scroll)
 	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

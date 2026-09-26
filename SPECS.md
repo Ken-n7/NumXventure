@@ -24,6 +24,7 @@ Tagline: *Explore. Solve. Conquer.*
 
 | | Player (student) | Admin (teacher, or any student) |
 |---|---|---|
+| 2026-09-26 | **Quest Keeper music.** Matches the players' side: the Quest Keeper's home, Question Management and Feedback play the town songs; Game Controls follows its session (`_refresh_state`) -- battle songs while making it and in the lobby, The Journey running or paused, Victory! once ended, the town songs with no session. Only the splash is silent now. |
 | 2026-09-26 | **Lobby and adventure music.** Pick Your Team shuffles "Battle 1" and "Battle 2" (looped from 10.76s / 0.63s), carried on onto the map while it waits for the Quest Keeper's Start; the start (`_swoop`, or `skip_intro`) crossfades to "The Journey", which is not loopable and so replays from the top. The code form keeps the town songs. `Main.open()` sets a screen's music before its setup, so a screen can change it there. |
 | 2026-09-26 | **Victory music.** "Victory!" on the end-of-game summary, looped from 8.501s -- whatever the ending (gate, time up, ended early). |
 | 2026-09-26 | **Audio settings.** Home's Settings has a Music volume slider (0 is Off, in 5% steps, % beside it), in the parchment kit (`Ui.slider`: wooden track, gold fill, cream knob, button-tall for a thumb). The music plays on its own "Music" bus; the volume is the device's, kept in `user://audio.cfg` (`Music.set_volume`), 80% to start. |

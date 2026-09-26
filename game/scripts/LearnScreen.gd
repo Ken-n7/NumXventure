@@ -110,6 +110,7 @@ func _build() -> void:
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.add_theme_font_size_override("font_size", Pal.SMALL)
 		b.pressed.connect(func(idx := i) -> void: _show(idx))
+		Ui.click(b)
 		_tab_buttons.append(b)
 		topics.add_child(b)
 

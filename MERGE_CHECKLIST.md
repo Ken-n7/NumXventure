@@ -202,6 +202,20 @@ answers failed in the heaviest run.
       slows, tell teachers to keep it visible (or keep the hub running
       while hidden).
 
+## Weak / dropped connection (2026-10-07, `82f2071`)
+
+- [x] Answers held on a dead line and sent in order when it is back; one
+      that went out with no reply is checked on the server before it is
+      resent (never counted twice) — `net_retry_test`, 13 checks
+- [x] Offline: positions stop, new questions and Rescue wait, banner
+      "Reconnecting… your answers are saved"; weak: half the positions
+- [x] Phone, live: answered offline, saved 8s after WiFi came back, once;
+      banner cleared within 10s. Found and fixed on the way: the live
+      connection never retried a connect that failed at once
+- [x] Sessions over an hour: not a concern — the teacher sets the time
+      limit; a token expiring mid-game is renewed on the next call anyway
+- [ ] Phone on weak mobile data (not just WiFi off/on): needs a real SIM
+
 ## Housekeeping
 
 - [ ] Server test leftovers (live project): accounts `qa_admin10071339`,

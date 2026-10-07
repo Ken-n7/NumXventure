@@ -54,17 +54,22 @@ The phone now has this branch's debug APK.
 
 ## Known open issues (not blocking unless noted)
 
-- [ ] Hero spawns on the Base Camp campfire: the flame shows above the head
+- [x] Hero spawns on the Base Camp campfire: fire moved beside the spawn (`852e35e`)
 - [ ] Game Controls still caps at 4 teams (`MAX_TEAMS`); colours are ready for 6
-- [ ] `touch_test` "the hero walks while the player looks" was flaky earlier
-      (failed 1 in ~4 runs during the tower-number work; green since)
-- [ ] `tools/admin.tscn` (live Supabase) had 1 failure: "a code ended
-      elsewhere is announced on every screen" — not investigated. Admin-side
-      code is untouched by this branch, so it is on `main` too: not blocking.
-- [ ] Game Controls opened **before** a student entered the map did not see
-      them become ready (Start said nobody was ready); reopened, it did.
-      Seen with a scripted desktop admin twice — check with a real admin.
-      Admin-side code untouched by this branch: not blocking.
+- [x] `touch_test` "the hero walks while the player looks" was flaky: the
+      test waited 10 frames (~1px of walking headless). Waits on the clock
+      now (`897a76c`)
+- [x] `tools/admin.tscn` (live Supabase) "a code ended elsewhere is
+      announced": failed every run. The check ended the session before the
+      screens' realtime stream was subscribed, so it was never delivered.
+      Waits for `Net.realtime().live` now; passes (`897a76c`)
+- [x] Game Controls "not seeing ready": not a bug. Reproduced with the admin
+      open before the phone joined: lobby at 16s, ready at 18s, live. My
+      script had pressed Start the instant the phone entered the map, before
+      its presence arrived (the phone itself still said "0 of 1 ready").
+- [ ] Polish: the question screen's Rescue is not greyed while paused. The
+      server refuses a rescue while paused (SPECS §38), so nothing wrong is
+      recorded; the student just gets a refusal.
 - [x] SPECS.md changelog entry for 2026-10-07
 
 ## Audit findings
@@ -122,6 +127,13 @@ Checked and **not** acted on:
   (renamed `board`).
 - Minor: `Art.sit_on_art` mis-measures a fully transparent frame (scatter
   tool only).
+
+## Bug hunt (2026-10-07, after the audit)
+
+- [x] Warnings/errors printed during smoke, e2e, touch, rescue, tower,
+      keyboard runs: none (beyond Godot's exit leak notes)
+- [x] Layout at 640×360 and 800×360 (20:9): covered by `tools/layout.tscn`
+- [x] Pause during an open question: answers held, server refuses rescue
 
 ## Housekeeping
 

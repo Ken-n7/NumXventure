@@ -42,14 +42,15 @@ character, tower numbers not plain.
 - [x] "Tap GO — enter Station 1" / "Tap GO — Answer Quest!" on the plate
 - [x] Gold floating number + firefly; fly-away from 1 to 2 after answering
 - [x] Dev drawer shows Hero −/+ (no Zoom)
-- [ ] Crib fade after 10s — fixed after the phone test, re-check on device
-- [ ] Station sign / BASE CAMP fix — fixed after the phone test, re-check
-- [ ] Admin header with a real admin name + character face (only seen offline)
+- [x] Crib fade after 10s (re-checked 2026-10-07: gone by 0:22)
+- [x] Station sign / BASE CAMP fix (re-checked on the phone)
+- [x] Admin header with a real admin name + character face (desktop, real login)
 - [ ] Two or more phones in one session: arrows and names in team colours
+      (only one phone here; 6×5 teams checked in desktop renders)
+- [x] Rescue greyed before Start, enabled after (phone)
 - [ ] Release APK on a phone (no dev tools, nothing debug-only showing)
 
-The phone currently has the debug APK from `in-app-patches` (harmless, no
-patch exists). Reinstall from this branch before the re-checks above.
+The phone now has this branch's debug APK.
 
 ## Known open issues (not blocking unless noted)
 
@@ -58,8 +59,13 @@ patch exists). Reinstall from this branch before the re-checks above.
 - [ ] `touch_test` "the hero walks while the player looks" was flaky earlier
       (failed 1 in ~4 runs during the tower-number work; green since)
 - [ ] `tools/admin.tscn` (live Supabase) had 1 failure: "a code ended
-      elsewhere is announced on every screen" — not investigated
-- [ ] SPECS.md changelog has no entries for 2026-10-07's work
+      elsewhere is announced on every screen" — not investigated. Admin-side
+      code is untouched by this branch, so it is on `main` too: not blocking.
+- [ ] Game Controls opened **before** a student entered the map did not see
+      them become ready (Start said nobody was ready); reopened, it did.
+      Seen with a scripted desktop admin twice — check with a real admin.
+      Admin-side code untouched by this branch: not blocking.
+- [x] SPECS.md changelog entry for 2026-10-07
 
 ## Audit findings
 
@@ -119,7 +125,9 @@ Checked and **not** acted on:
 ## Housekeeping
 
 - [ ] Server test leftovers (live project): accounts `qa_admin10071339`,
-      `qa_player10071339` (`@numxventure-test.dev`), session `EXD6`; plus
+      `qa_player10071339` (`@numxventure-test.dev`; deleting needs the
+      service-role key or the dashboard), sessions `EXD6`, `3Y83` (3Y83
+      ended; EXD6 probably ended by the same admin); plus
       whatever `tools/admin.tscn` created and did not clean up
 - [ ] Rebuild `build/` APKs + Windows from the merged `main` for the client
 - [ ] `in-app-patches` branch: rebase onto `main` after this merge

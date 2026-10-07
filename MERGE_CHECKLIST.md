@@ -157,6 +157,8 @@ walking at the app's rate. Positions on one shared channel (`numxventure`).
 | 30 players, 0.5s, **teacher hub**, snapshots 0.25s | ~61/s | ~155/s | **99–100%** | 561ms | **none** |
 | App hub as built, 29 sim + teacher, 0.5s / 4 snaps/s | 57/s pos | 57 + 88 snaps/s | 99% | 456ms | none — snapshots 5.9 KB |
 | **Optimized**: on change + 1s heartbeat, 3 snaps/s, slim | **34/s** pos | **34 + 82 snaps/s** | 94% (rest superseded) | 505ms | none — snapshots **2.1 KB** |
+| Same, **answering too** (walk 8–15s, answer 8–15s), all member changes to every phone | 23/s pos | 23 + 82 snaps + **35.7 db changes/s** | 96% | 505ms | none |
+| **+ progress in snapshots, own row only, silent while answering** | **18/s** pos | 18 + 82 snaps + **1.4 db changes/s** | 93% | 511ms | none — snapshots 1.3 KB |
 
 Realtime says `Too many messages per second` on the channel and closes it;
 that phone's later positions are refused ("unmatched topic"), so it freezes on

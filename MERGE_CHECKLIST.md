@@ -139,6 +139,30 @@ Checked and **not** acted on:
 - [x] Layout at 640×360 and 800×360 (20:9): covered by `tools/layout.tscn`
 - [x] Pause during an open question: answers held, server refuses rescue
 
+## Server load (2026-10-07, live Supabase, free tier)
+
+`tools/sim/classroom.py --reuse --teams 6 --students N --move 90 [--pos-every S]`:
+the whole class answering, a pause, rescues, and every phone on Realtime
+walking at the app's rate. Positions on one shared channel (`numxventure`).
+
+| Run | In | Out (fan-out) | Delivered | Lag p95 | Cut off |
+|---|---|---|---|---|---|
+| 6 players, 0.15s (app today) | 38/s | 226/s | 100% | 289ms | none |
+| 30 players, 0.15s (app today) | 185/s | 597/s | 6–17% | 3.0s | ~all |
+| 30 players, 0.5s | 59/s | 541/s | 20–41% | 607ms | 28/31 |
+| 30 players, 1.0s | 30/s | 491/s | 34–70% | 192ms | 17/31, at 31s and 46s |
+
+Realtime says `Too many messages per second` on the channel and closes it;
+that phone's later positions are refused ("unmatched topic"), so it freezes on
+everyone's map. Not the join/presence burst (cuts come 30-45s into steady
+walking) and not the incoming rate (22/s in still cut): it is the channel's
+fan-out. REST was fine throughout: every student who played was scored
+exactly (30/30 in the last three runs); `apply_answer` p95 ~0.8-1.4s, and 8
+answers failed in the heaviest run.
+
+- [ ] **Blocking for a full class of 30 on the free tier.** Decide: per-team
+      (or per-session) Realtime channels, a paid plan, or both — then rerun.
+
 ## Housekeeping
 
 - [ ] Server test leftovers (live project): accounts `qa_admin10071339`,

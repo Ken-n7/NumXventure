@@ -190,8 +190,17 @@ answers failed in the heaviest run.
 - [x] Game Controls reopened on the running session: walking again within
       ~10s. 7-minute run incl. a 93s outage: 73% of positions overall —
       ~93% outside the outage — 267 answers, 2977 progress rows delivered
-- [ ] Smoothness by eye on a phone (the phone takes 0.73s a screenshot and
-      has no screen recorder; `build/shots/hub_walk.gif` is coarse)
+- [x] Smoothness: a second game window on the laptop as a student,
+      recording every frame (`build/shots/hub_walk_desktop.mp4`): 15
+      classmates over 15s, 0% frames standing still, 1 jump, speed 139-161
+      px/s against a true 150
+- [ ] **Teacher's window must not be paused.** On this Linux laptop
+      (Wayland) a fully covered game window drops to ~1 frame/s; the hub then
+      sends ~1 snapshot every few seconds and every classmate stops and jumps.
+      Windows is not known to do this, but check on the client's Windows
+      laptop: Game Controls minimized, and covered by another app. If it
+      slows, tell teachers to keep it visible (or keep the hub running
+      while hidden).
 
 ## Housekeeping
 

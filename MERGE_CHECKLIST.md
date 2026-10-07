@@ -1,0 +1,131 @@
+# Merge checklist: `stairs-rescue-menu` → `main`
+
+Tick as you go. Started 2026-10-07. `main` has not moved since the branch was
+cut, and `git merge-tree` reports a clean merge.
+
+## What is on the branch (12 commits)
+
+| Commit | Change |
+|---|---|
+| `1704584` | Windows desktop export preset |
+| `6fb140e` | Room on stairs, Rescue on the top bar, no player menu (client 2026-10-01) |
+| `d7cb726` | Learn: lessons rebuilt from the client's posters (Q13) |
+| `47c32c5` | Hero 1.6 (was 1.4), size knob in the dev drawer, `[`/`]` debug-only |
+| `8f38b9b` | Bushes, door guards, sheep layered by their feet |
+| `2137570` | Six team colours (purple, pink added) |
+| `e482ac5` | "Tap GO" prompt on a dark plate, 18px |
+| `4cbfed8` | Tower numbers on the roof, floating, next one gold + firefly that flies on |
+| `10dab47` | Team-colour arrow over every hero, own included |
+| `92106d2` | Change Character on the admin dashboard |
+| `9d55bc2` | Phone controls crib fades after 10s |
+| `a6f44cc` | Hero in front of the station sign; BASE CAMP label raised |
+
+Client notes covered: "Tap GO" text, team colour above characters, bigger
+character, tower numbers not plain.
+
+## Automated checks
+
+- [x] `game/tools/run_tests.sh`: all suites green (rules, mathtext, auth,
+      collisions + 4 seeds, smoke, e2e, touch, rescue, alltime, keyboard,
+      backdrop, tower, layout, guards, 14 shots)
+- [ ] Server SQL suite (`supabase/test/run.sh`) — skipped, no local Postgres.
+      Branch does not touch `supabase/`, so not blocking.
+- [x] Release APK exports and signs (`tools/device.sh release`)
+- [x] Windows release export builds
+- [x] Clean merge into `main`
+- [x] Code audit of the branch diff: 2 blocking, 5 to fix, see "Audit findings"
+
+## On a phone (Realme RMX1851, 2026-10-07, debug APK)
+
+- [x] Sign in, character pick, join by code, team pick, enter map
+- [x] Hero 1.6, red Team-2 arrow, "!" above it
+- [x] "Tap GO — enter Station 1" / "Tap GO — Answer Quest!" on the plate
+- [x] Gold floating number + firefly; fly-away from 1 to 2 after answering
+- [x] Dev drawer shows Hero −/+ (no Zoom)
+- [ ] Crib fade after 10s — fixed after the phone test, re-check on device
+- [ ] Station sign / BASE CAMP fix — fixed after the phone test, re-check
+- [ ] Admin header with a real admin name + character face (only seen offline)
+- [ ] Two or more phones in one session: arrows and names in team colours
+- [ ] Release APK on a phone (no dev tools, nothing debug-only showing)
+
+The phone currently has the debug APK from `in-app-patches` (harmless, no
+patch exists). Reinstall from this branch before the re-checks above.
+
+## Known open issues (not blocking unless noted)
+
+- [ ] Hero spawns on the Base Camp campfire: the flame shows above the head
+- [ ] Game Controls still caps at 4 teams (`MAX_TEAMS`); colours are ready for 6
+- [ ] `touch_test` "the hero walks while the player looks" was flaky earlier
+      (failed 1 in ~4 runs during the tower-number work; green since)
+- [ ] `tools/admin.tscn` (live Supabase) had 1 failure: "a code ended
+      elsewhere is announced on every screen" — not investigated
+- [ ] SPECS.md changelog has no entries for 2026-10-07's work
+
+## Audit findings
+
+Fixes (uncommitted at time of writing): B1/B2 with 5 new checks in
+`rescue_test` (they fail without the fix), 3/4 checked by a scripted flight,
+6 measured on screen; full `run_tests.sh` green after.
+
+Code review of `main...stairs-rescue-menu` (12 commits, 39 files), each
+finding checked against the code. **B** = blocks the merge.
+
+- [x] **B1. Rescue button skips the old guards** (`6fb140e`).
+      `AdventureScreen.open_rescue()` only checks `_overlay` and
+      `Game.rescue_block()`; the old menu could not open while paused, in
+      the frozen intro or spectating. So a finished player can still give
+      gems after their finish is recorded, and anyone can rescue while the
+      Quest Keeper has paused. Fix: guard `open_rescue()` (and grey the
+      button) on `hud.paused`, `_frozen`, `_spectate`.
+- [x] **B2. Cancelling Rescue in those states brings the pad back**:
+      `close_overlay()` always calls `hud.set_pad(true)`, so the joystick
+      and GO reappear while spectating or in the intro. Goes away with B1.
+- [x] 3. Firefly always leaves from the number's middle: `set_state("done")`
+      hides it before `send_firefly()` reads `_firefly.visible`, so the
+      jump from its loop to the middle happens on every answer. Cosmetic.
+- [x] 4. Firefly hand-off undone by another refresh: a second
+      `_refresh_circles()` mid-flight (e.g. Rescue opened and cancelled)
+      hides the flyer and shows the next tower's at once; a rejoin can send
+      one across the map. Cosmetic.
+- [x] 5. Admin Change Character writes the teacher's name into the device's
+      one profile (`Game.player_name`), so a student signing in next on that
+      phone skips the character picker and plays the teacher's hero. Fix:
+      for an admin, save the hero only, not the name. (The same carry-over
+      already happens between two students on one phone.)
+- [x] 6. Long flash messages (server errors) run off both sides of the
+      screen: the bigger prompt has no wrap and no maximum width.
+- [x] 7. Stale: `play_zoom` (`AdventureScreen.gd:75`) is never changed now
+      that Zoom is gone, and its comment still mentions the drawer's Zoom.
+
+Checked and **not** acted on:
+- [x] Sheep halving in size when they walk: fixed (`Wander.gd` keeps the
+      placed scale).
+- Sheep "drawn 58px higher": wrong. Their frames are trimmed to 48px, so
+  the shift is about 22px and they do sort by their feet. But it showed an
+  **older bug**: sheep are placed at scale 0.9 and `Wander.gd` sets 0.45
+  once they walk, so every sheep halves in size when it moves (on `main`
+  too).
+- Tower signs still seeded from instance ids (`TowerSymbols`, `6fb140e`):
+  true; tests pass. Seeding from the tower index would make them exact.
+  Optional.
+- One shared firefly instead of one per tower: a design suggestion. The
+  idle cost is small (particles off when not current); it would also make
+  3 and 4 simpler. Optional.
+- [x] Minor: `var sign` in `Stations.gd` shadowed the built-in `sign()`
+  (renamed `board`).
+- Minor: `Art.sit_on_art` mis-measures a fully transparent frame (scatter
+  tool only).
+
+## Housekeeping
+
+- [ ] Server test leftovers (live project): accounts `qa_admin10071339`,
+      `qa_player10071339` (`@numxventure-test.dev`), session `EXD6`; plus
+      whatever `tools/admin.tscn` created and did not clean up
+- [ ] Rebuild `build/` APKs + Windows from the merged `main` for the client
+- [ ] `in-app-patches` branch: rebase onto `main` after this merge
+
+## Merge
+
+- [ ] All blocking items above ticked
+- [ ] `git switch main && git merge --no-ff stairs-rescue-menu`
+- [ ] Push (only when you say so)

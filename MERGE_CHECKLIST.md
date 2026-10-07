@@ -154,6 +154,7 @@ walking at the app's rate. Positions on one shared channel (`numxventure`).
 | 6 players, 0.15s, **90s** | 38/s | 226/s | 100% | 128ms | none |
 | 30 players, 0.15s, **per-team channels** | 187/s | 414/s | 22–72% | 555ms | 20/36, at 20–60s |
 | 30 players, 0.5s, **per-team channels** | 59/s | 295/s | **100%** | **126ms** | **none** |
+| 30 players, 0.5s, **teacher hub**, snapshots 0.25s | ~61/s | ~155/s | **99–100%** | 561ms | **none** |
 
 Realtime says `Too many messages per second` on the channel and closes it;
 that phone's later positions are refused ("unmatched topic"), so it freezes on
@@ -166,10 +167,14 @@ class, 100% delivered, nothing cut. REST was fine throughout: every student who 
 exactly (30/30 in the last three runs); `apply_answer` p95 ~0.8-1.4s, and 8
 answers failed in the heaviest run.
 
-- [ ] **Blocking for a full class of 30 on the free tier.** Proven fix:
-      per-team channels + POS_EVERY_S 0.5 (other teams then step tower to
-      tower instead of walking live). Or a paid plan. Decide, then build and
-      rerun `--channel team --pos-every 0.5`.
+- [ ] **Blocking for a full class of 30 on the free tier.** Client wants
+      everyone on one map, live. Proven: **teacher hub** — each phone sends
+      on a channel only the teacher joins, the teacher's Game Controls sends
+      everyone one snapshot of all positions 4 times a second. 30 students:
+      99–100% delivered, nothing cut, every score exact, ~155 messages/s.
+      Positions arrive ~0.5s late (two hops + the snapshot wait). Needs the
+      teacher's screen open during play; without it heroes fall back to
+      their towers. Build it, then rerun `--channel hub`.
 
 ## Housekeeping
 

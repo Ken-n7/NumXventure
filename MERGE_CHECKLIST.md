@@ -159,6 +159,7 @@ walking at the app's rate. Positions on one shared channel (`numxventure`).
 | **Optimized**: on change + 1s heartbeat, 3 snaps/s, slim | **34/s** pos | **34 + 82 snaps/s** | 94% (rest superseded) | 505ms | none — snapshots **2.1 KB** |
 | Same, **answering too** (walk 8–15s, answer 8–15s), all member changes to every phone | 23/s pos | 23 + 82 snaps + **35.7 db changes/s** | 96% | 505ms | none |
 | **+ progress in snapshots, own row only, silent while answering** | **18/s** pos | 18 + 82 snaps + **1.4 db changes/s** | 93% | 511ms | none — snapshots 1.3 KB |
+| **40 students**, same app setup, walking + answering 120s | 25/s pos | 25 + 119 snaps + 1.9 db changes/s | 96% | 514ms | none — answers 191/191 saved, p95 369ms |
 
 Realtime says `Too many messages per second` on the channel and closes it;
 that phone's later positions are refused ("unmatched topic"), so it freezes on
@@ -218,7 +219,8 @@ answers failed in the heaviest run.
 
 ## Housekeeping
 
-- [ ] Server test leftovers (live project): accounts `qa_admin10071339`,
+- [ ] Server test leftovers (live project): `simclass000`–`simclass040` test
+      roster (40 registered 2026-10-07 for the 40-student run), accounts `qa_admin10071339`,
       `qa_player10071339` (`@numxventure-test.dev`; deleting needs the
       service-role key or the dashboard), sessions `EXD6`, `3Y83` (3Y83
       ended; EXD6 probably ended by the same admin); plus

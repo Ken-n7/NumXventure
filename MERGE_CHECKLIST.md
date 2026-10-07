@@ -67,9 +67,9 @@ The phone now has this branch's debug APK.
       open before the phone joined: lobby at 16s, ready at 18s, live. My
       script had pressed Start the instant the phone entered the map, before
       its presence arrived (the phone itself still said "0 of 1 ready").
-- [ ] Polish: the question screen's Rescue is not greyed while paused. The
-      server refuses a rescue while paused (SPECS §38), so nothing wrong is
-      recorded; the student just gets a refusal.
+- [x] Question screen's Rescue (not greyed while paused): removed altogether
+      (user, 2026-10-07): Rescue lives on the top bar only. The mockups had
+      one with Hint and Skip — worth a word with the client.
 - [x] SPECS.md changelog entry for 2026-10-07
 
 ## Audit findings

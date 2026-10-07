@@ -167,14 +167,15 @@ class, 100% delivered, nothing cut. REST was fine throughout: every student who 
 exactly (30/30 in the last three runs); `apply_answer` p95 ~0.8-1.4s, and 8
 answers failed in the heaviest run.
 
-- [ ] **Blocking for a full class of 30 on the free tier.** Client wants
-      everyone on one map, live. Proven: **teacher hub** — each phone sends
-      on a channel only the teacher joins, the teacher's Game Controls sends
-      everyone one snapshot of all positions 4 times a second. 30 students:
-      99–100% delivered, nothing cut, every score exact, ~155 messages/s.
-      Positions arrive ~0.5s late (two hops + the snapshot wait). Needs the
-      teacher's screen open during play; without it heroes fall back to
-      their towers. Build it, then rerun `--channel hub`.
+- [x] **Blocking for a full class of 30 on the free tier — fixed.** Client
+      wants everyone on one map, live. Built the **teacher hub** in the app
+      (`scripts/net/PosHub.gd` on Game Controls; phones send on
+      `Realtime.in_topic`, read the teacher's `snap_topic`). Checked live
+      2026-10-07: the app's own Game Controls as teacher (session H9H8), 29
+      simulated students + the real phone, 6 teams, 120s walking: 99% of
+      positions delivered to every student, lag median 326ms / p95 485ms,
+      nothing cut; the phone's aerial view shows the whole class walking.
+      Needs the teacher's Game Controls open during play.
 
 ## Housekeeping
 

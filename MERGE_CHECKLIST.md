@@ -181,6 +181,18 @@ answers failed in the heaviest run.
       nothing cut; the phone's aerial view shows the whole class walking.
       Needs the teacher's Game Controls open during play.
 
+## Teacher hub: device checks (2026-10-07, real phone + app Game Controls)
+
+- [x] Phone sees the whole class walking (aerial view, 15 sim classmates)
+- [x] Teacher's Game Controls killed mid-game: classmates held ~12s, then
+      stand at their towers; their rows advance tower to tower as they
+      answer (the 20s server fallback)
+- [x] Game Controls reopened on the running session: walking again within
+      ~10s. 7-minute run incl. a 93s outage: 73% of positions overall —
+      ~93% outside the outage — 267 answers, 2977 progress rows delivered
+- [ ] Smoothness by eye on a phone (the phone takes 0.73s a screenshot and
+      has no screen recorder; `build/shots/hub_walk.gif` is coarse)
+
 ## Housekeeping
 
 - [ ] Server test leftovers (live project): accounts `qa_admin10071339`,

@@ -104,8 +104,9 @@ finding checked against the code. **B** = blocks the merge.
       that Zoom is gone, and its comment still mentions the drawer's Zoom.
 
 Checked and **not** acted on:
-- [x] Sheep halving in size when they walk: fixed (`Wander.gd` keeps the
-      placed scale).
+- [x] Sheep halving in size when they walk: one size now, 0.45 (the size
+      players knew). Sheep also walked through rocks, trunks and buildings:
+      they keep to the hero's walls now (17 of 23 went in before, 0 after).
 - Sheep "drawn 58px higher": wrong. Their frames are trimmed to 48px, so
   the shift is about 22px and they do sort by their feet. But it showed an
   **older bug**: sheep are placed at scale 0.9 and `Wander.gd` sets 0.45

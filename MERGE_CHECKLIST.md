@@ -46,9 +46,12 @@ character, tower numbers not plain.
 - [x] Station sign / BASE CAMP fix (re-checked on the phone)
 - [x] Admin header with a real admin name + character face (desktop, real login)
 - [ ] Two or more phones in one session: arrows and names in team colours
-      (only one phone here; 6×5 teams checked in desktop renders)
+      (only one phone here; 6×5 teams checked in desktop renders) —
+      **for the client test day**, not blocking
 - [x] Rescue greyed before Start, enabled after (phone)
-- [ ] Release APK on a phone (no dev tools, nothing debug-only showing)
+- [x] Release APK on a phone: launches, signs in, no D tabs or dev tools
+      (2026-10-07; the phone keeps the release build — uninstall before a
+      debug install, the signatures differ)
 
 The phone now has this branch's debug APK.
 
@@ -56,6 +59,7 @@ The phone now has this branch's debug APK.
 
 - [x] Hero spawns on the Base Camp campfire: fire moved beside the spawn (`852e35e`)
 - [ ] Game Controls still caps at 4 teams (`MAX_TEAMS`); colours are ready for 6
+      — kept at 4 on purpose for now (user, 2026-10-07), not blocking
 - [x] `touch_test` "the hero walks while the player looks" was flaky: the
       test waited 10 frames (~1px of walking headless). Waits on the clock
       now (`897a76c`)
@@ -142,7 +146,9 @@ Checked and **not** acted on:
       service-role key or the dashboard), sessions `EXD6`, `3Y83` (3Y83
       ended; EXD6 probably ended by the same admin); plus
       whatever `tools/admin.tscn` created and did not clean up
-- [ ] Rebuild `build/` APKs + Windows from the merged `main` for the client
+- [x] `build/` rebuilt from this branch (dev APK, signed release APK,
+      Windows debug), 2026-10-07 15:18 — rebuild again only if `main` gets
+      anything else
 - [ ] `in-app-patches` branch: rebase onto `main` after this merge
 
 ## Merge

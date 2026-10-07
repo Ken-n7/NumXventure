@@ -151,17 +151,25 @@ walking at the app's rate. Positions on one shared channel (`numxventure`).
 | 30 players, 0.15s (app today) | 185/s | 597/s | 6–17% | 3.0s | ~all |
 | 30 players, 0.5s | 59/s | 541/s | 20–41% | 607ms | 28/31 |
 | 30 players, 1.0s | 30/s | 491/s | 34–70% | 192ms | 17/31, at 31s and 46s |
+| 6 players, 0.15s, **90s** | 38/s | 226/s | 100% | 128ms | none |
+| 30 players, 0.15s, **per-team channels** | 187/s | 414/s | 22–72% | 555ms | 20/36, at 20–60s |
+| 30 players, 0.5s, **per-team channels** | 59/s | 295/s | **100%** | **126ms** | **none** |
 
 Realtime says `Too many messages per second` on the channel and closes it;
 that phone's later positions are refused ("unmatched topic"), so it freezes on
 everyone's map. Not the join/presence burst (cuts come 30-45s into steady
-walking) and not the incoming rate (22/s in still cut): it is the channel's
-fan-out. REST was fine throughout: every student who played was scored
+walking) and not the incoming rate (22/s in still cut). Not per channel
+either: six team channels at the app's rate were still cut. It is the
+project's total Realtime traffic, in and out: clean at ~260-350 messages/s,
+cut at ~520+. **Per-team channels at 2 positions a second fit**: the full
+class, 100% delivered, nothing cut. REST was fine throughout: every student who played was scored
 exactly (30/30 in the last three runs); `apply_answer` p95 ~0.8-1.4s, and 8
 answers failed in the heaviest run.
 
-- [ ] **Blocking for a full class of 30 on the free tier.** Decide: per-team
-      (or per-session) Realtime channels, a paid plan, or both — then rerun.
+- [ ] **Blocking for a full class of 30 on the free tier.** Proven fix:
+      per-team channels + POS_EVERY_S 0.5 (other teams then step tower to
+      tower instead of walking live). Or a paid plan. Decide, then build and
+      rerun `--channel team --pos-every 0.5`.
 
 ## Housekeeping
 

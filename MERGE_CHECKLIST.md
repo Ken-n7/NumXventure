@@ -314,6 +314,19 @@ Open:
 - [ ] Class days: the home laptop on, charging, online. If the relay is down
       the phones move on the hub, so Game Controls stays open as before
 
+## Teachers kept apart (2026-10-09)
+
+- [x] `schema.sql` re-run on the live project (score holes and isolation,
+      one run) and the old questions given a teacher: the 14 to `ken`, a copy
+      to `aizy` (maybe the client's account). Checked from outside: a join
+      with chosen gems refused, each teacher's class gets 8/3/3, a teacher
+      sees only their own sessions
+- [ ] New APK on every phone before a second teacher writes questions (an old
+      one plays every teacher's active questions mixed)
+- [ ] Live, two teacher accounts: B's History, Game Controls and Question
+      Management show none of A's; A's class runs and gets A's questions
+- [ ] Open: who may register as admin (client), or relay tickets
+
 ## Housekeeping
 
 - [ ] Server test leftovers (live project; deleting accounts needs the

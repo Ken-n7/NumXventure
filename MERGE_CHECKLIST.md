@@ -325,22 +325,23 @@ Open:
       one plays every teacher's active questions mixed)
 - [ ] Live, two teacher accounts: B's History, Game Controls and Question
       Management show none of A's; A's class runs and gets A's questions
-- [ ] Open: who may register as admin (client), or relay tickets
+- [ ] Relay tickets, in this order: `schema.sql` run (7c) in
+      lghdcaxmaeidyuanjhvb; the home relay restarted (it then takes tickets and
+      old tokens alike); then the new APK and Windows builds. A new app on an
+      old relay is refused ("bad hello") and moves on the hub
+- [ ] Once every phone has the ticket build: drop the token hello from
+      `RelayServer._hello` / `who`
+- [ ] Open: who may register as admin (client)
 
 ## Housekeeping
 
-- [ ] Server test leftovers (live project; deleting accounts needs the
-      service-role key or the dashboard):
-      - accounts: the `simclass000`–`simclass040` roster (40 registered
-        2026-10-07 for the 40-student run), `qa_player10071339`,
-        `qa_admin10071339`, all `@numxventure-test.dev`. **Keep
-        `relayserver`** (`relay@numxventure-server.dev`): the home relay
-        publishes its address with it
-      - sessions: `EXD6`, `3Y83` (3Y83 ended; EXD6 probably ended by the same
-        admin), whatever `tools/admin.tscn` created and did not clean up, and
-        those still open on 2026-10-08, all tests: `NTEK`, `4YAJ`, `67QC`,
-        `W8P4`, `8FM6`, `K4H8` (each counts as over 3 hours after it was
-        made, `Teams.MAX_AGE_S`, so they block nothing)
+- [x] Server test leftovers, 2026-10-09: every `@numxventure-test.dev` account
+      deleted in the dashboard (the `simclass` roster, `qa_*`, `testteacher`,
+      `teacher` and the tools' stamped admins), and with them every session,
+      team, membership and question they made. Checked from outside: those
+      names gone; `ken`, `aizy`, `relayserver` and the real players still
+      there. `join_and_walk.py` signs the `simclass` roster up again when a
+      real-accounts load test needs it
 - [x] `build/` rebuilt from this branch at `083fd86`, 2026-10-08 23:45: dev APK
       (`NumXventure.apk`), signed release APK (`NumXventure-release.apk`,
       the NumXventure certificate), Windows release (`windows/`) and

@@ -3,7 +3,9 @@
 Tick as you go. Started 2026-10-07. `main` has not moved since the branch was
 cut, and `git merge-tree` reports a clean merge.
 
-## What is on the branch (12 commits)
+## What is on the branch
+
+The client review round (2026-10-07), then the networking work below it.
 
 | Commit | Change |
 |---|---|
@@ -20,19 +22,39 @@ cut, and `git merge-tree` reports a clean merge.
 | `9d55bc2` | Phone controls crib fades after 10s |
 | `a6f44cc` | Hero in front of the station sign; BASE CAMP label raised |
 
+Since (2026-10-07 to 10-08), plus the docs commits that tick this list:
+
+| Commit | Change |
+|---|---|
+| `50a957b` `40c995f` `4e7d6c8` `720c72a` `852e35e` `897a76c` | Audit and phone-check fixes: Rescue guards, firefly, sheep, campfire, two flaky tests |
+| `7b9904c` | Rescue on the top bar only, not the question screen |
+| `b5626e2` | Up to 6 teams; the team picker fits six |
+| `2fb67c8` `0f1d6ce` `c4e0828` | Load simulations: every phone walking on Realtime, per-team channels, the hub |
+| `ae07818` `48c059e` `385015f` | Teacher hub: positions as snapshots, sent on change, progress inside them |
+| `82f2071` | Answers held on a bad line, never lost or counted twice |
+| `1495ce9` `b7fd770` `120217f` | Hub fallback on a phone; 40 students through the hub; tower test flake |
+| `5217c8a` | Classmates played from path bundles, ~0.9s behind |
+| `d3bc224` | Supabase reached on networks whose IPv6 is dead (phone hotspots) |
+| `5ce5723` `cd25948` | Movement relay on the home laptop; heroes over it, hub as fallback |
+| `1f61097` `fab8405` | Playback after standing still; line status by heartbeats; offline launch waits |
+| `b80218b` `a4777be` | Echo ghost; one dev panel for every developer tool |
+| `b9a4656` `aec86f7` `2749b40` | Relay kept up: watchdog + Pinggy fallback, boot service, Manila tunnels |
+| `1f2f72c` | Load test with real accounts through the live relay |
+
 Client notes covered: "Tap GO" text, team colour above characters, bigger
 character, tower numbers not plain.
 
 ## Automated checks
 
-- [x] `game/tools/run_tests.sh`: all suites green (rules, mathtext, auth,
-      collisions + 4 seeds, smoke, e2e, touch, rescue, alltime, keyboard,
-      backdrop, tower, layout, guards, 14 shots)
+- [x] `game/tools/run_tests.sh`, 2026-10-08 at `2749b40`: all suites green
+      (rules, dial, relay, mathtext, auth, collisions + 4 seeds, smoke, e2e,
+      touch, devpanel, rescue, alltime, keyboard, backdrop, tower, netretry,
+      layout, guards, 13 shots)
 - [ ] Server SQL suite (`supabase/test/run.sh`) — skipped, no local Postgres.
       Branch does not touch `supabase/`, so not blocking.
 - [x] Release APK exports and signs (`tools/device.sh release`)
 - [x] Windows release export builds
-- [x] Clean merge into `main`
+- [x] Clean merge into `main` (re-checked 2026-10-08; `main` still at `f2dbbdc`)
 - [x] Code audit of the branch diff: 2 blocking, 5 to fix, see "Audit findings"
 
 ## On a phone (Realme RMX1851, 2026-10-07, debug APK)
@@ -217,17 +239,100 @@ answers failed in the heaviest run.
       limit; a token expiring mid-game is renewed on the next call anyway
 - [ ] Phone on weak mobile data (not just WiFi off/on): needs a real SIM
 
+## Movement relay (2026-10-08)
+
+Heroes' movement goes through a relay on the home laptop behind a free
+Cloudflare tunnel; Supabase keeps auth, the database, answers and the pause.
+How it fits together: SPECS §10, *Movement — a relay of our own*.
+
+Set up on the home laptop (once):
+
+- [x] `relay` table: `supabase/schema.sql` §7b run in the SQL editor
+- [x] Admin account that publishes the address: its own, `relayserver`
+      (`relay@numxventure-server.dev`, outside the test domain), in
+      `~/.config/numxventure/relay.env` (mode 600, outside the repo); the
+      earlier file, on `qa_admin10071339`, kept beside it as `.qa_admin.bak`
+- [x] `cloudflared` in `~/.local/bin`; `ssh` for the Pinggy fallback
+- [x] `tools/relay/run.sh install`: user service `numxventure-relay`, starts at
+      boot (linger); lid closed on charger does nothing
+      (`journalctl --user -u numxventure-relay -f` to watch it)
+- [x] The relay row's owner (`claim_relay`, `release_relay`, schema §7b) run on
+      the live project, 2026-10-08; server SQL suite green on Postgres 16
+      (`supabase/test/run.sh`, in Docker), 12 relay checks + a two-at-once race
+
+Checked:
+
+- [x] 40 simulated phones through the tunnel at 20 samples/s: 100% delivered,
+      66/94ms, relay 10.6% of one core
+- [x] 40 real accounts (`tools/sim/relay_load.py --code`): 40/40 let in
+      (median 0.9s), 100% delivered, own trip 72/98ms through a Manila tunnel,
+      144/172ms through a Hong Kong one (now redrawn); 8.3 KB/s a phone
+- [x] Kept up, live with a walking student: relay restarted on the same
+      address (5-8s); dead tunnel replaced (21s); frozen tunnel found and
+      replaced (89s at the default checks); Cloudflare refusing → Pinggy;
+      dead-end Cloudflare tunnels → Pinggy (76s); Pinggy's hourly renewal
+      (11s); back on Cloudflare once it works (44s); the service restarting a
+      killed script (45s); no internet at all does not count against Cloudflare
+- [x] Realme on home Wi-Fi: own move back in 48-100ms, classmates ~0.2-0.3s
+      behind; Redmi on mobile data: 224ms to the relay
+- [x] Bridge: a phone with *Relay off* (dev panel) and a phone on the relay
+      see each other
+- [x] Phone hotspot with dead IPv6: connects at once instead of after a minute
+- [x] Weak line (`relay_load.py --slow 1 --kbps 24 --adapt`, 40 phones): the
+      slow phone's classmates 0.15s behind (worst 2.5s, at the start)
+      instead of 57s and growing; a healthy class asks for nothing
+- [x] Backup on Game Controls (this laptop, live, a walking student): waits
+      while home serves; home stopped → backup serving in 49s, student back on
+      a relay in 74s; home back mid-class waits; session ended → home has the
+      row in 46s, the backup's tunnel stopped; Game Controls killed → home
+      took the row back in 192s (its `cloudflared` stayed running: known)
+
+Open:
+
+- [x] Phone day, 2026-10-09 (Realme RMX1851 + Redmi 13C over USB, the laptop as
+      teacher and one player window, reports via `netreport_listen.py`):
+      - Realme on home Wi-Fi + Redmi on mobile data: both see each other and
+        the laptop player; "smooth, slight delay": classmates ~0.43/0.45s
+        behind, ~0.3s of it playback buffer
+      - buffer retuned (`Peers.FAST_DRY_S`, `FAST_SETTLE_S`, `GLIDE_PX_S`,
+        min 0.1s): "smoother and less delay", buffer 100ms, classmates
+        ~0.17s (Wi-Fi) / ~0.21s (mobile) behind -- a quieter night network
+        too; expect ~0.25-0.35s in the day. Recheck in school hours
+      - Realme on the Redmi's hotspot (sharing mobile data): IPv6 broken
+        through the hotspot, IPv4 pinned in 0.5-0.65s, relay up, ~0.4s
+      - Realme locked ~2 min: back on the relay 10-20s after unlocking,
+        realtime reconnected by itself, both classmates on screen
+      - dev panel on a phone: DEV tab easy to tap, Network tab readable,
+        taps never moved the hero
+- [ ] Windows teacher laptop: Game Controls joins the relay as the teacher
+      and its View Map shows the relay's walkers
+- [ ] Windows teacher laptop as the backup: one folder with the game and
+      `cloudflared.exe` beside it, no installs (the client's laptop is also
+      their internship machine), then in a test session stop the home relay (`systemctl --user stop
+      numxventure-relay`) and see the row's owner become `game-controls:...`
+      and the phones walk on; no console window should open for cloudflared
+- [ ] Class days: the home laptop on, charging, online. If the relay is down
+      the phones move on the hub, so Game Controls stays open as before
+
 ## Housekeeping
 
-- [ ] Server test leftovers (live project): `simclass000`–`simclass040` test
-      roster (40 registered 2026-10-07 for the 40-student run), accounts `qa_admin10071339`,
-      `qa_player10071339` (`@numxventure-test.dev`; deleting needs the
-      service-role key or the dashboard), sessions `EXD6`, `3Y83` (3Y83
-      ended; EXD6 probably ended by the same admin); plus
-      whatever `tools/admin.tscn` created and did not clean up
-- [x] `build/` rebuilt from this branch (dev APK, signed release APK,
-      Windows debug), 2026-10-07 15:18 — rebuild again only if `main` gets
-      anything else
+- [ ] Server test leftovers (live project; deleting accounts needs the
+      service-role key or the dashboard):
+      - accounts: the `simclass000`–`simclass040` roster (40 registered
+        2026-10-07 for the 40-student run), `qa_player10071339`,
+        `qa_admin10071339`, all `@numxventure-test.dev`. **Keep
+        `relayserver`** (`relay@numxventure-server.dev`): the home relay
+        publishes its address with it
+      - sessions: `EXD6`, `3Y83` (3Y83 ended; EXD6 probably ended by the same
+        admin), whatever `tools/admin.tscn` created and did not clean up, and
+        those still open on 2026-10-08, all tests: `NTEK`, `4YAJ`, `67QC`,
+        `W8P4`, `8FM6`, `K4H8` (each counts as over 3 hours after it was
+        made, `Teams.MAX_AGE_S`, so they block nothing)
+- [x] `build/` rebuilt from this branch at `083fd86`, 2026-10-08 23:45: dev APK
+      (`NumXventure.apk`), signed release APK (`NumXventure-release.apk`,
+      the NumXventure certificate), Windows release (`windows/`) and
+      Windows debug with the dev panel (`windows-debug/`). Older test APKs
+      in `build/` (`-dev`, `-netcheck`, `-relay`) can go
 - [ ] `in-app-patches` branch: rebase onto `main` after this merge
 
 ## Merge

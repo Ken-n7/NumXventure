@@ -321,6 +321,9 @@ Open:
       deliberately starved relay must, and its class land on the home relay
 - [ ] Afterwards on that laptop: the undo in the chat (sshd, Tailscale, the
       folder, `%APPDATA%\Godot\app_userdata\NumXventure`)
+- [ ] Hand the client `build/NumXventure-Windows.zip` (tools/windows.sh): unzip
+      anywhere, open NumXventure.exe. Windows may say "protected your PC" once:
+      More info → Run anyway. Game + cloudflared + icon, nothing to install
 - [ ] Class days: the teacher's laptop on, online, Game Controls open, with
       `cloudflared.exe` beside the game. The home laptop is a bonus backup
 

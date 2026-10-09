@@ -315,6 +315,10 @@ Open:
       Controls, phones join it, a phone that joined early moves over within a
       minute; minimized and covered window keeps serving; crash → leftover
       cloudflared ended on reopen
+- [x] Same laptop over http2 (Smart data, 5.75 Mbps up): 10 phones 100% at
+      0.17s; 40 adapting phones ~0.2s settled, none refused (QUIC: ~25%)
+- [ ] Step-down live: a normal 40-phone adapting run must not step down; a
+      deliberately starved relay must, and its class land on the home relay
 - [ ] Afterwards on that laptop: the undo in the chat (sshd, Tailscale, the
       folder, `%APPDATA%\Godot\app_userdata\NumXventure`)
 - [ ] Class days: the teacher's laptop on, online, Game Controls open, with

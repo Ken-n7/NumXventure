@@ -306,13 +306,19 @@ Open:
         taps never moved the hero
 - [ ] Windows teacher laptop: Game Controls joins the relay as the teacher
       and its View Map shows the relay's walkers
-- [ ] Windows teacher laptop as the backup: one folder with the game and
-      `cloudflared.exe` beside it, no installs (the client's laptop is also
-      their internship machine), then in a test session stop the home relay (`systemctl --user stop
-      numxventure-relay`) and see the row's owner become `game-controls:...`
-      and the phones walk on; no console window should open for cloudflared
-- [ ] Class days: the home laptop on, charging, online. If the relay is down
-      the phones move on the hub, so Game Controls stays open as before
+- [x] Client's Windows laptop (`laptop-jbv6ihc6`, over Tailscale + SSH, one
+      folder `C:\Users\Acer\NumXventure-test`, no installs), as the old
+      backup: standby while home was up; home stopped → serving in under 40s,
+      tunnel answers (101) via Cloudflare `mnl02`; cloudflared has no window;
+      home back → waits while the laptop holds the row
+- [ ] Same laptop as its class's own relay (7d build): opens with Game
+      Controls, phones join it, a phone that joined early moves over within a
+      minute; minimized and covered window keeps serving; crash → leftover
+      cloudflared ended on reopen
+- [ ] Afterwards on that laptop: the undo in the chat (sshd, Tailscale, the
+      folder, `%APPDATA%\Godot\app_userdata\NumXventure`)
+- [ ] Class days: the teacher's laptop on, online, Game Controls open, with
+      `cloudflared.exe` beside the game. The home laptop is a bonus backup
 
 ## Teachers kept apart (2026-10-09)
 

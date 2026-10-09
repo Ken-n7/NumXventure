@@ -399,7 +399,9 @@ Revisit if the pilot's network disappoints.
 ### Movement — a relay of our own *(2026-10-08)*
 
 **Supabase keeps auth, the database, answers, scores and the pause. Heroes'
-movement goes through a relay on the home laptop.** Supabase's free Realtime
+movement goes through a relay: the teacher's own laptop hosts it for their
+class, and the home laptop, when it is on, is the shared backup** (client,
+2026-10-09: the home laptop cannot be counted on). Supabase's free Realtime
 is metered across the whole project — clean at ~260-350 messages/s, cut past
 ~520 — and a class walking is players × players deliveries. The teacher hub
 (`PosHub.gd`, 2026-10-07) got 30-40 phones under that line, but only with each
@@ -409,11 +411,11 @@ A relay of our own has no meter.
 | Piece | Where | What |
 |---|---|---|
 | Relay | `scripts/relay/RelayServer.gd`, run by `tools/relay.gd` | Rooms per session. Phones send a 9-byte sample every 1/20s while walking (`RelayCodec`); one binary snapshot of everyone's new points goes out per tick (20/s). Lets in a student with a `members` row in the session, or the session's teacher, by a **relay ticket**: the phone asks Supabase for one (`relay_ticket`) and says hello with it, never with its sign-in token, and the relay redeems it with its own login (`relay_redeem`, admins only, an hour at most), so whoever runs a relay holds nothing that opens Supabase. Apps from before tickets still say hello with their token, let in until every phone is updated. No service key on the laptop. |
-| Address | `relay` table (`supabase/schema.sql` §7b) | One row: the public address and rate. Only an admin writes it; phones read it, and treat it as stale after 180s. |
+| Address | `session_relays` (`supabase/schema.sql` §7d), and the `relay` row (§7b) | A class's own relay: its address on that session, set and refreshed every 30s by its teacher's Game Controls (`host_relay`), read only by that class, stale after 90s. Else the shared row, the home relay's: only an admin writes it, stale after 180s. |
 | Tunnel | `tools/relay/run.sh` | A free Cloudflare quick tunnel to the laptop. Its address changes on every start; the relay republishes it, and phones pick it up on their next retry. |
 | Phone | `scripts/net/RelayLink.gd`, `map/Peers.gd` | Joins on the map, plays classmates 0.1-0.8s behind (adaptive buffer), and sends through the hub whenever the relay is down. On a weak line it asks the relay for fewer snapshots (20 → 10 → 5 a second, each hero's newest point) and, when it is 2s behind, drops the backlog by reconnecting at 5; it steps back up once calm. |
 | Fallback | `PosHub.gd`, the bridge | A phone that cannot reach the relay moves on the hub as before; while any does, the hub's snapshots carry the relay's students too, so both sides see the whole class. |
-| Backup | `scripts/relay/RelayHost.gd` on Game Controls | The teacher's laptop (Windows or Linux) stands in when no relay holds the address row: it starts a relay and a Cloudflare tunnel of its own (`cloudflared` beside the game or installed) and serves until the session ends. The row has an owner (`claim_relay`, schema §7b): taken only when free or 180s stale, never from a relay still refreshing it, so a class is never split between two. |
+| Class relay | `scripts/relay/RelayHost.gd` on Game Controls | While the teacher has a session open, their laptop (Windows or Linux) runs a relay and a Cloudflare tunnel of its own (`cloudflared` beside the game or installed) for that class only, and takes its address down when the session ends. Phones prefer their class's relay, fall back to the home relay, then the hub, and look again every minute while connected (`RelayLink.RECHECK_S`), so a class that joined before its relay was up, or lost it, moves over and is never split between two. Only the session's own teacher can set its address. |
 
 **Kept up** by `run.sh`, installed as a user service (`run.sh install`) that
 starts at boot: it restarts the relay or the tunnel on its own, replaces a
@@ -431,18 +433,18 @@ that) in a class of 40: without the adaptive rate its classmates fell 57s
 behind and kept falling; with it, 0.15s, at 2.3 KB/s (`relay_load.py --slow
 1 --kbps 24 --adapt`).
 
-**Backup, measured live:** home stopped cleanly → the teacher's laptop
-serving in 49s, a walking student back on a relay in 74s (on the hub
-between); home back mid-class waits ("another relay holds the row"); the
-session ended → home took the row again in 46s. A home relay that dies
-without letting go is replaced once its row is 180s stale (~4 min in all).
+**Backup, measured live (2026-10-08, when the teacher's laptop only stood
+in):** home stopped cleanly → the teacher's laptop serving in 49s, a walking
+student back on a relay in 74s (on the hub between). On the client's own
+Windows laptop (2026-10-09): serving in under 40s, its tunnel through
+Cloudflare Manila (`mnl02`), cloudflared with no window.
 
 > ⚠️ **What it costs.** Quick tunnels come with no uptime promise
-> (Cloudflare: "testing and development"). The home relay is only up while
-> the home laptop and the home internet are; when it is not, the teacher's
-> laptop carries the class on its own connection (about 30 MB an hour per
-> walking phone) -- and if that cannot either, phones move on the hub: slower
-> to show (~0.9s), never stopped. If Game Controls crashes while serving, its
+> (Cloudflare: "testing and development"). The teacher's laptop carries its
+> class on its own connection: about 30 MB an hour per walking phone, ~1.2 GB
+> an hour for 40, ~330 KB/s up -- the client's to provide. If it cannot, the
+> home relay does when it is on, and if neither can, phones move on the hub:
+> slower to show (~0.9s), never stopped. If Game Controls crashes while serving, its
 > `cloudflared` idles until the backup next starts (it is ended then) or the
 > laptop restarts.
 
@@ -721,6 +723,7 @@ The cloud **is** the transport now, so there is no separate phase. What remains 
 
 | Date | Change |
 |---|---|
+| 2026-10-09 | **The teacher's laptop hosts its own class's relay** (client: the home laptop cannot be counted on, the teacher's is there whenever a class is). Game Controls starts a relay and tunnel as soon as a session is open and puts the address on that session (`session_relays`, refreshed every 30s, stale after 90s); phones use their class's relay, else the home relay, else the hub, and look again every minute, so a class never stays split between two. Only a session's teacher can set its address, so a fake admin can no longer send another teacher's class anywhere. The home relay stays as the shared backup. Tested on the client's Windows laptop as the old backup: serving in under 40s, Cloudflare Manila, cloudflared without a window. **Needs `schema.sql` re-run, and new builds.** |
 | 2026-10-09 | **Security audit; teachers kept apart.** Checked against the whole system on a throwaway copy of the database, playing a student. **Fixed:** a student could join with any gems and `finished` they chose (the column grant covered updates only), and could answer far more than the 14 circles, +10 each (the phone says whether it was right) -- joins now write only who joined which team, and answers stop at 14 (`scoring_test.sql`). The phone never sends its sign-in token to a plain `ws://` relay. **Teachers kept apart (client, Q12):** a teacher reads and changes only their own sessions, teams and players, and has their own question bank (`questions.owner`; a class plays its teacher's); before, any admin could end another's class, rename its teams, move its players or edit the one shared bank (`isolation_test.sql`, 17 checks, which fail on the old schema). **Lobby broadcasts are a doorbell:** anyone signed in could send a fake "ended" or team into any class's lobby on the shared channel; a broadcast now only makes the lobby read the database again, at most once a second. **Relay tickets:** a phone said hello to the relay with its sign-in token, so whoever ran a relay -- any admin can publish one or host the backup -- held every phone's token for an hour; the hello carries a ticket now (§10 Relay). **Test accounts removed** from the live project: every `@numxventure-test.dev` account and what it made. **Still open:** anyone may register as admin (§2), so a fake admin can still point every class at their own relay and stop the heroes moving -- no longer collect anything -- until the client decides who may be admin (teacher code, admins made by hand, or no sign-up). **Needs `supabase/schema.sql` re-run and the old questions given a teacher** (`supabase/README.md` step 6); the new APK on every phone before a second teacher writes questions. Also: a Game Controls that crashed while serving as the backup relay no longer leaves `cloudflared` running. |
 | 2026-10-08 | **Heroes move over a relay of our own; Supabase keeps everything else.** Positions left Supabase Realtime in two steps. *10-07:* the teacher hub — every phone sends to the teacher's Game Controls, which sends the class one snapshot 3×/s — took 30 walking from cut off (6-17% delivered) to 99%; then each walk went as a path bundle every 0.33s, played ~0.9s behind. *10-08:* a **movement relay** on the home laptop behind a free Cloudflare tunnel, its address published in the `relay` table, phones checked by their own Supabase token; the hub stays as the fallback and bridges the two (§10 *Movement — a relay of our own*). **40 real accounts, 20 samples/s:** all let in, 100% delivered, a phone's own move back in 72ms median / 98ms p95, 8.3 KB/s a phone; the laptop spends 11% of a core on the relay. Kept up by `tools/relay/run.sh` as a boot service: separate restarts, a dead address replaced, Pinggy while Cloudflare fails, Manila tunnels preferred (Hong Kong ones doubled the trip, 144ms). **Fixed on the way:** phone hotspots whose IPv6 is dead took a minute to connect (`Dial` races the addresses; `PinnedSocket`); a walk played seconds late after standing still; "Weak connection" on a good line (judged by realtime heartbeats now, HTTP time as a median of five); an offline launch showed Sign In instead of waiting. **All developer tools in one dev panel**, DEV tab bottom-left on every screen (`game/DEVTOOLS.md`). Also: change-log rows from 09-25 on had been landing in §2's Roles table; moved back here. Checks and open items in `MERGE_CHECKLIST.md`. |
 | 2026-10-07 | **Client review round: bigger hero, team colours over heads, plainer prompts, livelier towers.** *Hero* 1.6 (was 1.4), teammates too; the `[`/`]` size knob is debug-only and the dev drawer has Hero −/+ in place of Zoom. *Team colour above the characters* (client): a ▼ in the team colour over every hero, the player's own included, name above it; six team colours (purple, pink added) ready for 6 teams of 5 -- Game Controls still caps at 4. *"Tap GO" text*: the prompt sits on a dark plate, 18px, and wraps when long. *Tower numbers* (client: "not plain, noticeable"): on the roof, floating out of step; the one to answer next is gold with a firefly circling it, which flies on to the next tower once it is answered. *Layering*: bushes, door guards and sheep sort by their feet; the hero stands in front of the station sign; BASE CAMP clears the hero. *Phone*: the controls crib fades after 10s (it covered the towers along the top). *Rescue only on the top bar*: the question screen's Rescue (from the mockups) is gone, so there is one Rescue, by the gems and the clock; to rescue mid-question, answer or skip first. *Admin*: Change Character on the dashboard too (the name stays out of the device's player profile). *Fixed on the way*: Rescue could be used while paused, before the start, or after finishing (the top-bar button skipped the old menu's guards); sheep halved in size when they walked. Checked on a phone (Realme RMX1851) end to end; tracked in `MERGE_CHECKLIST.md`. |

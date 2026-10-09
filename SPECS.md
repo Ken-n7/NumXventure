@@ -440,7 +440,8 @@ without letting go is replaced once its row is 180s stale (~4 min in all).
 > laptop carries the class on its own connection (about 30 MB an hour per
 > walking phone) -- and if that cannot either, phones move on the hub: slower
 > to show (~0.9s), never stopped. If Game Controls crashes while serving, its
-> `cloudflared` keeps running, idle, until the laptop restarts.
+> `cloudflared` idles until the backup next starts (it is ended then) or the
+> laptop restarts.
 
 ---
 

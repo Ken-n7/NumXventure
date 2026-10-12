@@ -15,7 +15,9 @@ const RAISED := Art.MIN_FONT
 const SUPERS := "⁰¹²³⁴⁵⁶⁷⁸⁹⁻ⁿ"
 const PLAIN := "0123456789−n"
 
-## One lesson per station, in the order the adventure meets them. The tab is
+## One lesson per station. Exponents come before the order of operations
+## here (client, 2026-10-12), though the adventure meets them the other way
+## round. The tab is
 ## short (a Button's minimum size grows with its text); the heading and intro
 ## are the mockup's own words, verbatim, because §1 makes the PDFs a wording
 ## contract. The sections are the client's lesson posters (learn/, 2026-10-01)
@@ -106,6 +108,31 @@ static var LESSONS := [
 		],
 	},
 	{
+		"tab": "Exponential Notation",
+		"colour": Pal.WRONG,
+		"heading": "Understanding Numbers Expressed in Exponential Notation",
+		"intro": "The mastery of basic multiplication facts is necessary. You should not "
+			+ "multiply the base and its exponent but multiply the base by the "
+			+ "number of times as shown in the exponent.",
+		"sections": [
+			["Remember these simple rules", [
+				["numbered", [
+					["Exponential form uses a base and an exponent.", "2³"],
+					["The base is the number being multiplied repeatedly.", "In 2³, 2 is the base."],
+					["The exponent tells how many times the base is used as a factor.", "2³ = 2 × 2 × 2"],
+					["To change exponential form to expanded form, multiply the base by itself according to the exponent.", "3⁴ = 3 × 3 × 3 × 3"],
+					["To change expanded form to exponential form, identify the repeated factor and count how many times it appears.", "5 × 5 × 5 = 5³"],
+					["To find the value of an exponential number, perform the repeated multiplication.", "4² = 4 × 4 = 16"],
+					["Do not multiply the base and exponent directly.", "3⁴ means 3 × 3 × 3 × 3, not 3 × 4."],
+				]],
+			]],
+			["Quick reminder", [
+				["card", ["Base = the number being repeated", "Exponent = the number of repetitions",
+					"Value = the answer after multiplying"]],
+			]],
+		],
+	},
+	{
 		"tab": "Order of Operations",
 		"colour": Pal.AMBER,
 		"heading": "Order of Operations on Integers",
@@ -133,31 +160,6 @@ static var LESSONS := [
 					["A & S", "Add and subtract, left to right.", "8 + 4 = 12 → 12 − 3 = 9"],
 				]],
 				["card", ["Final answer:  9"]],
-			]],
-		],
-	},
-	{
-		"tab": "Exponential Notation",
-		"colour": Pal.WRONG,
-		"heading": "Understanding Numbers Expressed in Exponential Notation",
-		"intro": "The mastery of basic multiplication facts is necessary. You should not "
-			+ "multiply the base and its exponent but multiply the base by the "
-			+ "number of times as shown in the exponent.",
-		"sections": [
-			["Remember these simple rules", [
-				["numbered", [
-					["Exponential form uses a base and an exponent.", "2³"],
-					["The base is the number being multiplied repeatedly.", "In 2³, 2 is the base."],
-					["The exponent tells how many times the base is used as a factor.", "2³ = 2 × 2 × 2"],
-					["To change exponential form to expanded form, multiply the base by itself according to the exponent.", "3⁴ = 3 × 3 × 3 × 3"],
-					["To change expanded form to exponential form, identify the repeated factor and count how many times it appears.", "5 × 5 × 5 = 5³"],
-					["To find the value of an exponential number, perform the repeated multiplication.", "4² = 4 × 4 = 16"],
-					["Do not multiply the base and exponent directly.", "3⁴ means 3 × 3 × 3 × 3, not 3 × 4."],
-				]],
-			]],
-			["Quick reminder", [
-				["card", ["Base = the number being repeated", "Exponent = the number of repetitions",
-					"Value = the answer after multiplying"]],
 			]],
 		],
 	},

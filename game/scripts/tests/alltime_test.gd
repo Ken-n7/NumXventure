@@ -21,6 +21,10 @@ class FakeMain extends Control:
 		opened.append(what)
 
 
+class BoardReply extends RefCounted:
+	signal answered(data: Dictionary)
+
+
 func frames(n := 3) -> void:
 	for i in n:
 		await get_tree().process_frame
@@ -99,6 +103,7 @@ func _ready() -> void:
 	Net.user_id = ""
 	await frames(2)
 	await _states()
+	await _overlapping_loads()
 	await _list()
 	await _your_teams()
 	await _team_panel()
@@ -141,6 +146,35 @@ func _states() -> void:
 		(teams(b)[0] as Button).disabled if teams(b).size() > 0 else false)
 	b.queue_free()
 	Game.leaderboard = []
+
+
+func _overlapping_loads() -> void:
+	print("-- older responses cannot replace a newer board")
+	_board = {"error": "", "rows": two_games()}
+	var b := await board()
+	for old: Dictionary in [{"error": "HTTP 503", "rows": []},
+			{"error": "", "rows": [row("old", "Old team", 1, 1)]}]:
+		var replies: Array[BoardReply] = []
+		b.fetch_board = func() -> Dictionary:
+			var reply := BoardReply.new()
+			replies.append(reply)
+			return await reply.answered
+		b._load()
+		b._load()
+		check("two reads can overlap", replies.size() == 2)
+		if replies.size() != 2:
+			continue
+		replies[1].answered.emit({"error": "", "rows": [row("new", "New team", 400, 2)]})
+		await frames()
+		check("the newer board arrives first", teams(b).size() == 1
+			and text_of(teams(b)[0], "Name") == "New team")
+		replies[0].answered.emit(old)
+		await frames()
+		check("a late response adds neither stale rows nor a retry",
+			teams(b).size() == 1 and text_of(teams(b)[0], "Name") == "New team"
+			and visible_text(b, "Old team") == ""
+			and (node(b, "Retry") == null or node(b, "Retry").is_queued_for_deletion()))
+	b.queue_free()
 
 
 func _list() -> void:

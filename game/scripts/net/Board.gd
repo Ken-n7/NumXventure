@@ -13,14 +13,24 @@ const SCORES := "/rest/v1/team_scores"
 const MEMBERS := "/rest/v1/members"
 ## Shared by every player list and History's embedded members.
 const PLAYER_ORDER := "gems.desc,finish_s.asc.nullslast,profile_id.asc"
+## Equal team scores keep the same order across History and both boards.
+const TEAM_ORDER := "gems.desc,team_id.asc"
 
 
 ## [{name, gems, members}], best first.
 static func teams(session_id: String) -> Array:
+	var got := await teams_result(session_id)
+	return got.rows
+
+
+## Keep a failed read distinct from a session with no teams that played.
+static func teams_result(session_id: String) -> Dictionary:
 	var got: Dictionary = await Net.rest(HTTPClient.METHOD_GET,
 		SCORES + "?select=name,gems,members&session_id=eq." + session_id
-		+ "&order=gems.desc")
-	return got.data if got.error == "" and got.data is Array else []
+		+ "&members=gt.0&order=" + TEAM_ORDER)
+	if got.error != "" or not (got.data is Array):
+		return {"error": got.error if got.error != "" else "Invalid score response", "rows": []}
+	return {"error": "", "rows": got.data}
 
 
 ## [{username, gems, correct, items_done, finish_s, eliminated, over}], best
@@ -30,12 +40,17 @@ static func teams(session_id: String) -> Array:
 ## pauses not counted -- or -1;
 ## `over` is whether the session has ended, which makes a -1 a DNF.
 static func players(session_id: String) -> Array:
+	var got := await players_result(session_id)
+	return got.rows
+
+
+static func players_result(session_id: String) -> Dictionary:
 	var got: Dictionary = await Net.rest(HTTPClient.METHOD_GET,
 		MEMBERS + "?select=gems,correct,items_done,finish_s,eliminated,profiles(username),"
 		+ "sessions(state,created_at,ends_at)&session_id=eq." + session_id
 		+ "&order=" + PLAYER_ORDER)
 	if got.error != "" or not (got.data is Array):
-		return []
+		return {"error": got.error if got.error != "" else "Invalid score response", "rows": []}
 	var out: Array = []
 	for row: Dictionary in got.data:
 		var who: Variant = row.get("profiles")
@@ -49,7 +64,7 @@ static func players(session_id: String) -> Array:
 			"eliminated": bool(row.get("eliminated", false)),
 			"over": row.get("sessions") is Dictionary and Teams.expired(row.get("sessions")),
 		})
-	return out
+	return {"error": "", "rows": out}
 
 
 ## The all-time board (client, 2026-09-27): every team of every finished game,
@@ -60,7 +75,7 @@ static func players(session_id: String) -> Array:
 static func all_time(limit := 500) -> Dictionary:
 	var got: Dictionary = await Net.rest(HTTPClient.METHOD_GET,
 		"/rest/v1/team_results?select=team_id,session_id,name,gems,members,game_no,played_at,player_ids"
-		+ "&order=gems.desc,game_no.asc&limit=%d" % limit)
+		+ "&order=gems.desc,game_no.asc,team_id.asc&limit=%d" % limit)
 	return {"error": got.error, "rows": got.data if got.error == "" and got.data is Array else []}
 
 

@@ -32,6 +32,7 @@ var offline := false
 var _list: VBoxContainer
 var _status: Label
 var _team: Control = null
+var _load_version := 0
 
 
 func setup(_data: Dictionary) -> void:
@@ -64,8 +65,11 @@ func setup(_data: Dictionary) -> void:
 
 
 func _load() -> void:
+	_load_version += 1
+	var version := _load_version
 	for c in _list.get_children():
 		if c != _status:
+			_list.remove_child(c)
 			c.queue_free()
 	_status.visible = true
 	_status.text = "Loading…"
@@ -73,7 +77,7 @@ func _load() -> void:
 		_fill_offline()
 		return
 	var got: Dictionary = await fetch_board.call()
-	if not is_instance_valid(_list):
+	if not is_instance_valid(self) or version != _load_version or not is_instance_valid(_list):
 		return
 	if str(got.get("error", "")) != "":
 		_status.text = "Couldn't load the leaderboard. Check your connection and try again."

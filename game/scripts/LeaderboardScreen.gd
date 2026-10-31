@@ -17,6 +17,8 @@ var main: Control
 var _list: VBoxContainer
 var _tab := 0
 var _watching := false
+## A late response cannot redraw a newer refresh or a different tab.
+var _fill_version := 0
 ## Which session this board shows. `Game.session_id` is only ever set by the
 ## map, which a teacher never opens -- so the admin's "Live Leaderboard" was
 ## reading "" and showing this device's offline runs instead of the class.
@@ -126,6 +128,7 @@ func _watch() -> void:
 
 
 func _rebuild() -> void:
+	_fill_version += 1
 	for c in get_children():
 		c.queue_free()
 	_build()
@@ -134,22 +137,50 @@ func _rebuild() -> void:
 func _fill() -> void:
 	if not is_instance_valid(_list):
 		return
-	for c in _list.get_children():
-		c.queue_free()
+	_fill_version += 1
+	_clear_list()
+	_list.add_child(Art.label("Loading scores…", Pal.SMALL, Pal.INK_MUTED,
+		HORIZONTAL_ALIGNMENT_CENTER))
 	if _tab == 1:
-		_fill_players()
+		_fill_players(_fill_version)
 	else:
-		_fill_teams()
+		_fill_teams(_fill_version)
 
 
-func _fill_teams() -> void:
+func _clear_list() -> void:
+	for c in _list.get_children():
+		_list.remove_child(c)
+		c.queue_free()
+
+
+func _show_error() -> void:
+	_list.add_child(Art.label("Couldn't load scores. Check your connection and try again.",
+		Pal.SMALL, Pal.INK_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var retry := Ui.button("Try again", 140, Ui.H, Ui.SMALL)
+	retry.name = "Retry"
+	retry.pressed.connect(_fill)
+	Ui.centre_row(_list, retry)
+
+
+func _fill_teams(version := -1) -> void:
+	if version < 0:
+		_fill_version += 1
+		version = _fill_version
 	var rows: Array = []
 	if _sid != "":
-		rows = await Board.teams(_sid)
-	if rows.is_empty():
+		var got: Dictionary = await Board.teams_result(_sid)
+		if not is_instance_valid(self) or version != _fill_version or not is_instance_valid(_list):
+			return
+		if got.error != "":
+			_clear_list()
+			_show_error()
+			return
+		rows = got.rows
+	else:
 		rows = Game.leaderboard
-	if not is_instance_valid(_list):
+	if version != _fill_version or not is_instance_valid(_list):
 		return
+	_clear_list()
 	if rows.is_empty():
 		_list.add_child(Art.label("No scores yet.", Pal.SMALL, Pal.INK_MUTED,
 				HORIZONTAL_ALIGNMENT_CENTER))
@@ -222,11 +253,19 @@ func _podium(top: Array) -> Control:
 ## What a spectating teacher actually reads: who is scoring, who is answering,
 ## and each player's own time through the Victory Gate -- "Out" if they were
 ## eliminated, "DNF" if the session ended with them neither, "—" while playing.
-func _fill_players() -> void:
-	_row(["Rank", "Username", "Gems", "Correct", "Time"], [10, 30, 12, 10, 12])
-	var rows: Array = await Board.players(_sid)
-	if not is_instance_valid(_list):
+func _fill_players(version := -1) -> void:
+	if version < 0:
+		_fill_version += 1
+		version = _fill_version
+	var got: Dictionary = await Board.players_result(_sid)
+	if not is_instance_valid(self) or version != _fill_version or not is_instance_valid(_list):
 		return
+	_clear_list()
+	if got.error != "":
+		_show_error()
+		return
+	var rows: Array = got.rows
+	_row(["Rank", "Username", "Gems", "Correct", "Time"], [10, 30, 12, 10, 12])
 	if rows.is_empty():
 		_list.add_child(Art.label("Nobody has joined yet.", Pal.SMALL, Pal.INK_MUTED,
 				HORIZONTAL_ALIGNMENT_CENTER))

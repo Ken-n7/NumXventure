@@ -44,9 +44,48 @@ MEMBERS = [
     ("zero", "2", "zero-finish", 100, 0, 14, False),
     ("unfinished", "1", "still-playing", 220, None, 14, False),
     ("unfinished", "2", "finished", 220, 176, 14, False),
+    ("negative", "1", "played", 0, None, 6, True),
+    ("tied", "1", "tied-player", 100, 176, 14, False),
 ]
 GROUPS = list(dict.fromkeys(row[0] for row in MEMBERS))
 ERRORS = []
+STARTED = {}
+RELEASE = {}
+LOCK = threading.Lock()
+TEAMS = [(group, group + "-team", "Team 3", 540, 1, i + 1)
+         for i, group in enumerate(GROUPS) if group not in {"negative", "tied"}]
+TEAMS += [("negative", "0", "Empty", 0, 0, 8),
+          ("negative", "1", "Played", -75, 1, 8),
+          ("tied", "2", "Zulu", 100, 1, 9),
+          ("tied", "1", "Alpha", 100, 1, 9)]
+
+
+def ordered_teams(query):
+    clauses = []
+    for term in query.get("order", [""])[0].split(","):
+        field, *options = term.split(".")
+        assert field in {"gems", "game_no", "team_id"}, field
+        assert set(options) <= {"asc", "desc"}
+        clauses.append(field + (" DESC" if "desc" in options else " ASC"))
+    conditions, values = [], []
+    group = query.get("session_id", [""])[0]
+    if group.startswith("eq."):
+        conditions.append("session_id = ?")
+        values.append(group[3:])
+    elif group.startswith("in.("):
+        ids = group[4:-1].split(",")
+        conditions.append("session_id IN (" + ",".join("?" for _ in ids) + ")")
+        values.extend(ids)
+    if query.get("members") == ["gt.0"]:
+        conditions.append("members > 0")
+    with sqlite3.connect(":memory:") as db:
+        db.row_factory = sqlite3.Row
+        db.execute("CREATE TABLE teams (session_id TEXT, team_id TEXT, name TEXT, gems INT, members INT, game_no INT)")
+        db.executemany("INSERT INTO teams VALUES (?, ?, ?, ?, ?, ?)", TEAMS)
+        sql = "SELECT * FROM teams"
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
+        return [dict(row) for row in db.execute(sql + " ORDER BY " + ", ".join(clauses), values)]
 
 
 def ordered_members(group, order="", fields=None):
@@ -86,12 +125,34 @@ class Fixture(BaseHTTPRequestHandler):
         try:
             request = urlsplit(self.path)
             query = parse_qs(request.query)
+            if request.path == "/fixture/status":
+                self.reply(200, STARTED.copy())
+                return
+            if request.path == "/fixture/release":
+                RELEASE[query["key"][0]].set()
+                self.reply(200, {})
+                return
+            group = query.get("session_id", query.get("team_id", [""]))[0].removeprefix("eq.")
+            kind = request.path.rsplit("/", 1)[-1]
+            sequence = 0
+            if group == "refresh" or (group == "tab" and kind == "team_scores"):
+                key = kind + "-" + group
+                with LOCK:
+                    sequence = STARTED.get(key, 0) + 1
+                    STARTED[key] = sequence
+                    gate = RELEASE.setdefault(key, threading.Event())
+                if sequence == 1:
+                    assert gate.wait(10), "test did not release " + key
+            if group == "error":
+                self.reply(503, {"message": "fixture unavailable"})
+                return
             if request.path == "/rest/v1/members":
                 group = query.get("session_id", query.get("team_id"))[0].removeprefix("eq.")
-                if group == "error":
-                    self.reply(403, {"message": "fixture refusal"})
-                    return
-                body = ordered_members(group, query["order"][0])
+                if group in {"refresh", "tab"}:
+                    body = [{"profiles": {"username": "OldPlayer" if sequence == 1 else "NewPlayer"},
+                             "gems": 100, "correct": 5, "finish_s": 100}]
+                else:
+                    body = ordered_members(group, query["order"][0])
             elif request.path == "/rest/v1/sessions":
                 assert query["admin_id"] == ["eq.teacher"]
                 select = query["select"][0]
@@ -101,8 +162,11 @@ class Fixture(BaseHTTPRequestHandler):
                              state="ended", remaining_s=0,
                              members=ordered_members(group, query.get("members.order", [""])[0], fields))
                         for group in GROUPS]
-            elif request.path == "/rest/v1/team_scores":
-                body = [dict(session_id=group, name="Team 3", gems=540) for group in GROUPS]
+            elif request.path in {"/rest/v1/team_scores", "/rest/v1/team_results"}:
+                if group in {"refresh", "tab"}:
+                    body = [{"name": "OldTeam" if sequence == 1 else "NewTeam", "gems": 100, "members": 1}]
+                else:
+                    body = ordered_teams(query)
             else:
                 raise AssertionError(request.path)
             self.reply(200, body)
@@ -133,6 +197,144 @@ func check(label: String, ok: bool) -> void:
     print(("  ok    " if ok else "  FAIL  ") + label)
 func names(rows: Array) -> Array:
     return rows.map(func(row: Dictionary) -> String: return row.username)
+func frames(n := 3) -> void:
+    for i in n:
+        await get_tree().process_frame
+func texts(node: Node) -> Array:
+    return node.find_children("*", "Label", true, false).map(func(label: Label) -> String: return label.text)
+func board_for(sid: String) -> Control:
+    var board: Control = load("res://scripts/LeaderboardScreen.gd").new()
+    add_child(board)
+    var list := VBoxContainer.new()
+    board.add_child(list)
+    board.set("_list", list)
+    board.set("_sid", sid)
+    board.set("_live", false)
+    return board
+func started(key: String) -> bool:
+    for i in 30:
+        var got: Dictionary = await Net.rest(HTTPClient.METHOD_GET, "/fixture/status")
+        if int(got.data.get(key, 0)) > 0:
+            return true
+        await frames(1)
+    return false
+func release(key: String) -> void:
+    await Net.rest(HTTPClient.METHOD_GET, "/fixture/release?key=" + key)
+func wait_count(done: Array, count: int) -> bool:
+    for i in 180:
+        if done[0] >= count:
+            return true
+        await frames(1)
+    return false
+func load_teams(board: Control, done: Array) -> void:
+    await board._fill_teams()
+    done[0] += 1
+func load_players(board: Control, done: Array) -> void:
+    await board._fill_players()
+    done[0] += 1
+func wait_text(board: Control, wanted: String) -> bool:
+    for i in 180:
+        if wanted in texts(board):
+            return true
+        await frames(1)
+    return false
+func audit() -> void:
+    var teams: Array = await Board.teams("negative")
+    check("an empty team cannot beat the only team that played", teams.size() == 1 and teams[0].name == "Played")
+    teams = await Board.teams("tied")
+    check("equal team scores have a stable order", teams.map(func(row: Dictionary) -> String: return row.name) == ["Alpha", "Zulu"])
+    var alltime: Dictionary = await Board.all_time()
+    teams = alltime.rows.filter(func(row: Dictionary) -> bool: return row.session_id == "tied")
+    check("all-time exact team ties use the same order", teams.map(func(row: Dictionary) -> String: return row.name) == ["Alpha", "Zulu"])
+
+    var was: Array = Game.leaderboard
+    Game.leaderboard = [{"name": "LocalOnly", "gems": 999}]
+    Net.role = "admin"
+    var board := board_for("empty")
+    await board._fill_teams()
+    await frames()
+    check("an empty online board never shows local saved scores", not "LocalOnly" in texts(board) and "No scores yet." in texts(board))
+    board.free()
+    board = board_for("")
+    await board._fill_teams()
+    await frames()
+    check("offline practice still has its saved board", texts(board).has("LocalOnly") or texts(board).has("★ LocalOnly"))
+    board.free()
+
+    board = board_for("error")
+    await board._fill_teams()
+    await frames()
+    var buttons := board.find_children("*", "Button", true, false)
+    check("a failed team fetch never fabricates a local winner", not "LocalOnly" in texts(board))
+    check("a failed team fetch offers a retry", buttons.any(func(button: Button) -> bool: return button.text == "Try again"))
+    board.set("_sid", "screenshot")
+    for button: Button in buttons:
+        if button.text == "Try again":
+            button.pressed.emit()
+            break
+    check("retry loads the actual session's teams", await wait_text(board, "Team 3"))
+    board.free()
+    board = board_for("error")
+    board.set("_tab", 1)
+    await board._fill_players()
+    await frames()
+    check("a failed player fetch is not called an empty class", not "Nobody has joined yet." in texts(board))
+    check("a failed player fetch offers a retry", board.find_children("*", "Button", true, false).any(func(button: Button) -> bool: return button.text == "Try again"))
+    board.free()
+
+    var old_sid: String = Game.session_id
+    var old_team: String = Game.team_name
+    Game.session_id = "error"
+    Game.team_name = "LocalOnly"
+    var summary: Control = load("res://scripts/SummaryScreen.gd").new()
+    add_child(summary)
+    summary.result = {"gems": 50, "completed": [false, false, false], "perfect": [false, false, false]}
+    await summary._build()
+    await frames()
+    check("the online summary never claims a rank from local scores", not texts(summary).any(func(text: String) -> bool: return text.contains("finished #") or text.contains("1. LocalOnly")))
+    summary.free()
+    Game.session_id = old_sid
+    Game.team_name = old_team
+    Game.leaderboard = was
+
+    board = board_for("refresh")
+    var done := [0]
+    load_teams(board, done)
+    check("the older team request is held in flight", await started("team_scores-refresh"))
+    load_teams(board, done)
+    check("a newer team response renders first", await wait_count(done, 1) and "NewTeam" in texts(board))
+    await release("team_scores-refresh")
+    await wait_count(done, 2)
+    await frames()
+    check("the older team response cannot overwrite or duplicate newer scores", "NewTeam" in texts(board) and not "OldTeam" in texts(board))
+    board.free()
+
+    board = board_for("refresh")
+    board.set("_tab", 1)
+    done = [0]
+    load_players(board, done)
+    check("the older player request is held in flight", await started("members-refresh"))
+    load_players(board, done)
+    check("a newer player response renders first", await wait_count(done, 1) and "NewPlayer" in texts(board))
+    await release("members-refresh")
+    await wait_count(done, 2)
+    await frames()
+    check("the older player response cannot restore stale rows", "NewPlayer" in texts(board) and not "OldPlayer" in texts(board))
+    check("overlapping player requests show one heading", texts(board).count("Username") == 1)
+    board.free()
+
+    board = board_for("tab")
+    done = [0]
+    load_teams(board, done)
+    check("a team fetch can remain in flight while tabs change", await started("team_scores-tab"))
+    board.set("_tab", 1)
+    board._rebuild()
+    check("the new Player Ranking tab renders", await wait_text(board, "NewPlayer"))
+    await release("team_scores-tab")
+    await wait_count(done, 1)
+    await frames()
+    check("the old team fetch cannot insert a podium into Player Ranking", "NewPlayer" in texts(board) and not "OldTeam" in texts(board))
+    board.free()
 func _ready() -> void:
     Net.url = "http://127.0.0.1:PORT"
     Net.anon_key = "test"
@@ -180,8 +382,8 @@ func _ready() -> void:
     history.set("_list", list)
     await history._load()
     await get_tree().process_frame
-    check("History loaded every played session", list.get_child_count() == 7)
-    var expected_winners := ["kai · 220", "more-gems · 300", "personal-best · 230", "first · 220", "unknown-first · 100", "zero-finish · 100", "finished · 220"]
+    check("History loaded every played session", list.get_child_count() == 9)
+    var expected_winners := ["kai · 220", "more-gems · 300", "personal-best · 230", "first · 220", "unknown-first · 100", "zero-finish · 100", "finished · 220", "played · 0", "tied-player · 100"]
     for i in expected_winners.size():
         var card := list.get_child(i)
         var winner: String = card.get_child(0).get_child(2).get_child(1).text
@@ -189,10 +391,13 @@ func _ready() -> void:
     var photo_row := list.get_child(0).get_child(0)
     check("History keeps the top team and its score", photo_row.get_child(1).get_child(1).text == "Team 3 · 540")
     check("History keeps all eight players and the end reason", photo_row.get_child(0).get_child(1).text == "Time's up · 8 played")
+    check("History never selects a team nobody played for", list.get_child(7).get_child(0).get_child(1).get_child(1).text == "Played · -75")
+    check("History breaks exact team ties consistently", list.get_child(8).get_child(0).get_child(1).get_child(1).text == "Alpha · 100")
     list.get_child(0).pressed.emit()
     check("History opens this game's full results", main.opened == [{"screen": "board", "data": {"session": "screenshot", "title": "Results · " + history._when({"created_at": "2026-10-20T13:37:00Z"}), "back": "history", "live": false}}])
     history.free()
     main.free()
+    await audit()
     print("---- RANKINGS %s ---- %d checks, %d failures" % ["PASS" if failures == 0 else "FAIL", checks, failures])
     get_tree().quit(0 if failures == 0 else 1)
 '''

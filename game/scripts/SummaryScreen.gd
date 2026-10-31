@@ -17,13 +17,15 @@ func _build() -> void:
 	# Online the ranking is the class's, team totals from the server. The
 	# local board only knows this phone's runs, and listed the player's own
 	# gems as if they were the team's.
-	var rows: Array = Game.leaderboard
-	if _online():
-		var live: Array = await Board.teams(Game.session_id)
+	var online := _online()
+	var rows: Array = [] if online else Game.leaderboard
+	var ranking_error := false
+	if online:
+		var got: Dictionary = await Board.teams_result(Game.session_id)
 		if not is_instance_valid(self):
 			return
-		if not live.is_empty():
-			rows = live
+		ranking_error = got.error != ""
+		rows = got.rows
 	var me := Game.me()
 	var place := -1
 	for i in rows.size():
@@ -83,6 +85,9 @@ func _build() -> void:
 	if standing != "":
 		box.add_child(Art.label(standing.strip_edges(), Pal.SMALL, Pal.INK,
 			HORIZONTAL_ALIGNMENT_CENTER))
+	elif ranking_error:
+		box.add_child(Art.label("Couldn't load the team ranking. Check your connection.",
+			Pal.SMALL, Pal.INK_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
 	# The way on is the big one, on the right; the other two beside it.
 	var btns := HBoxContainer.new()

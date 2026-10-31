@@ -108,6 +108,7 @@ def ordered_members(group, order="", fields=None):
     out = []
     for row in rows:
         member = dict(profile_id=row["profile_id"], profiles={"username": row["username"]},
+                      teams={"name": "Team " + row["username"]},
                       gems=row["gems"], correct=14, items_done=row["items_done"],
                       finish_s=row["finish_s"], finished=row["finish_s"] is not None,
                       eliminated=bool(row["eliminated"]), sessions={"state": "ended"})
@@ -360,7 +361,7 @@ func _ready() -> void:
     await screen._fill_players()
     for i in 3:
         var cells: Array = list.get_child(i + 1).get_children().map(func(label: Label) -> String: return label.text)
-        var expected_row: Array = [["1", "kai", "220", "14", "02:56"], ["2", "missu", "220", "14", "04:18"], ["3", "nessa", "220", "14", "04:20"]][i]
+        var expected_row: Array = [["1", "kai", "Team kai", "220", "14", "02:56"], ["2", "missu", "Team missu", "220", "14", "04:18"], ["3", "nessa", "Team nessa", "220", "14", "04:20"]][i]
         check("displayed screenshot row %d" % (i + 1), cells == expected_row)
     check("DNF still displays correctly", screen._time_of({"finish_s": -1, "eliminated": false, "over": true}) == "DNF")
     check("eliminated still displays Out", screen._time_of({"finish_s": -1, "eliminated": true, "over": true}) == "Out")

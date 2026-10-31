@@ -19,6 +19,8 @@ var _tab := 0
 var _watching := false
 ## A late response cannot redraw a newer refresh or a different tab.
 var _fill_version := 0
+## Player Ranking column weights: Rank, Username, Team, Gems, Correct, Time.
+const COLS := [8, 24, 20, 10, 10, 12]
 ## Which session this board shows. `Game.session_id` is only ever set by the
 ## map, which a teacher never opens -- so the admin's "Live Leaderboard" was
 ## reading "" and showing this device's offline runs instead of the class.
@@ -265,7 +267,7 @@ func _fill_players(version := -1) -> void:
 		_show_error()
 		return
 	var rows: Array = got.rows
-	_row(["Rank", "Username", "Gems", "Correct", "Time"], [10, 30, 12, 10, 12])
+	_row(["Rank", "Username", "Team", "Gems", "Correct", "Time"], COLS)
 	if rows.is_empty():
 		_list.add_child(Art.label("Nobody has joined yet.", Pal.SMALL, Pal.INK_MUTED,
 				HORIZONTAL_ALIGNMENT_CENTER))
@@ -273,8 +275,8 @@ func _fill_players(version := -1) -> void:
 		return
 	for i in rows.size():
 		var r: Dictionary = rows[i]
-		_row([str(i + 1), str(r.username), str(r.gems), str(r.correct),
-			_time_of(r)], [10, 30, 12, 10, 12])
+		_row([str(i + 1), str(r.username), str(r.team), str(r.gems), str(r.correct),
+			_time_of(r)], COLS)
 	_add_note()
 
 

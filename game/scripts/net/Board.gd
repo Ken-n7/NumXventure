@@ -33,7 +33,7 @@ static func teams_result(session_id: String) -> Dictionary:
 	return {"error": "", "rows": got.data}
 
 
-## [{username, gems, correct, items_done, finish_s, eliminated, over}], best
+## [{username, team, gems, correct, items_done, finish_s, eliminated, over}], best
 ## first: most gems, then fastest finish; missing times come last on a tie.
 ## `profile_id` keeps exact ties stable. `finish_s` is the player's own time
 ## for the adventure -- the game clock when they walked into the Victory Gate,
@@ -46,7 +46,7 @@ static func players(session_id: String) -> Array:
 
 static func players_result(session_id: String) -> Dictionary:
 	var got: Dictionary = await Net.rest(HTTPClient.METHOD_GET,
-		MEMBERS + "?select=gems,correct,items_done,finish_s,eliminated,profiles(username),"
+		MEMBERS + "?select=gems,correct,items_done,finish_s,eliminated,profiles(username),teams(name),"
 		+ "sessions(state,created_at,ends_at)&session_id=eq." + session_id
 		+ "&order=" + PLAYER_ORDER)
 	if got.error != "" or not (got.data is Array):
@@ -55,7 +55,9 @@ static func players_result(session_id: String) -> Dictionary:
 	for row: Dictionary in got.data:
 		var who: Variant = row.get("profiles")
 		var t: Variant = row.get("finish_s")
+		var team: Variant = row.get("teams")
 		out.append({
+			"team": str((team as Dictionary).get("name", "—")) if team is Dictionary else "—",
 			"username": str((who as Dictionary).get("username", "?")) if who is Dictionary else "?",
 			"gems": int(row.get("gems", 0)),
 			"correct": int(row.get("correct", 0)),

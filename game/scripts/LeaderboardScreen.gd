@@ -29,6 +29,10 @@ var _title := ""
 var _back := ""           # the screen ← opens; "" for this side's home
 var _close := false       # a panel over another screen: ← closes it
 var _live := true         # the teacher's board follows answers as they land
+## The player whose answers are open over Player Ranking; {} for the ranking.
+var _viewing := {}
+## Answers view: item number, what they typed, the result.
+const ANS_COLS := [8, 30, 22]
 
 
 func setup(data: Dictionary) -> void:
@@ -78,6 +82,7 @@ func _build() -> void:
 			var which := i
 			Ui.tab_button(t).pressed.connect(func() -> void:
 				_tab = which
+				_viewing = {}
 				_rebuild())
 			tabs.add_child(t)
 		box.add_child(tabs)
@@ -123,8 +128,11 @@ func _watch() -> void:
 		return
 	_watching = true
 	var rt: Realtime = Net.realtime()
-	rt.changed.connect(func(table: String, _t: String, _r: Dictionary) -> void:
-		if table == "members" and is_instance_valid(_list):
+	rt.changed.connect(func(table: String, _t: String, r: Dictionary) -> void:
+		if table != "members" or not is_instance_valid(_list):
+			return
+		# One player's answers only refetch on that player's own score.
+		if _viewing.is_empty() or str(r.get("profile_id", "")) == str(_viewing.profile_id):
 			_fill())
 	rt.watch("members", "session_id=eq." + _sid)
 
@@ -138,6 +146,9 @@ func _rebuild() -> void:
 
 func _fill() -> void:
 	if not is_instance_valid(_list):
+		return
+	if not _viewing.is_empty():
+		_show_answers(_viewing)
 		return
 	_fill_version += 1
 	_clear_list()
@@ -276,8 +287,73 @@ func _fill_players(version := -1) -> void:
 	for i in rows.size():
 		var r: Dictionary = rows[i]
 		_row([str(i + 1), str(r.username), str(r.team), str(r.gems), str(r.correct),
-			_time_of(r)], COLS)
+			_time_of(r)], COLS, false, r)
+	var tip := Art.label("Tap a player to see their answers.", Pal.SMALL, Pal.INK_MUTED,
+		HORIZONTAL_ALIGNMENT_CENTER)
+	_list.add_child(tip)
 	_add_note()
+
+
+## One player's items, station by station (client, 2026-11-08): the number,
+## what they typed, and right, wrong or skipped. ← returns to the ranking.
+func _show_answers(p: Dictionary) -> void:
+	var again := _viewing == p
+	_viewing = p
+	_fill_version += 1
+	var version := _fill_version
+	if not again or _list.get_child_count() == 0:
+		_clear_list()
+		_list.add_child(Art.label("Loading %s's answers…" % p.username, Pal.SMALL, Pal.INK_MUTED,
+			HORIZONTAL_ALIGNMENT_CENTER))
+	var got: Dictionary = await Net.rest(HTTPClient.METHOD_POST, "/rest/v1/rpc/member_answers",
+		{"p_session": _sid, "p_profile": p.profile_id})
+	if not is_instance_valid(self) or version != _fill_version or not is_instance_valid(_list):
+		return
+	_clear_list()
+	_list.add_child(Art.label("%s · %s · %d gems" % [p.username, p.team, p.gems], Pal.LABEL,
+		Pal.TITLE, HORIZONTAL_ALIGNMENT_CENTER))
+	if got.error != "" or not (got.data is Array):
+		_show_error()
+		return
+	var by_item := {}
+	for e: Dictionary in got.data:
+		var cur: Dictionary = by_item.get(int(e.item), {})
+		if str(e.kind) == "hint":
+			cur.hint = true
+		else:
+			cur.merge({"kind": str(e.kind), "correct": e.correct, "answer": e.answer}, true)
+		by_item[int(e.item)] = cur
+	var unrecorded := false
+	var n := 0
+	for st in Game.ITEMS_PER_STATION.size():
+		_list.add_child(Art.label("Station %d" % (st + 1), Pal.LABEL, Pal.WOOD))
+		if st == 0:
+			_row(["#", "Answer", "Result"], ANS_COLS)
+		for _k in Game.ITEMS_PER_STATION[st]:
+			var e: Dictionary = by_item.get(n, {})
+			n += 1
+			var result := "—"
+			var tint := Pal.INK_MUTED
+			match str(e.get("kind", "")):
+				"answer":
+					result = "Correct" if bool(e.correct) else "Wrong"
+					tint = Pal.CORRECT if bool(e.correct) else Pal.WRONG
+				"skip":
+					result = "Skipped"
+					tint = Pal.WRONG
+			if e.get("hint", false):
+				result += " · hint"
+			var typed: Variant = e.get("answer")
+			if str(e.get("kind", "")) == "answer" and typed == null:
+				unrecorded = true
+			var line := _row([str(n), str(typed) if typed != null else "—", result], ANS_COLS)
+			(line.get_child(2) as Label).add_theme_color_override("font_color", tint)
+	if unrecorded:
+		var why := Art.label("Typed answers are saved from this update on; older games show only right or wrong.",
+			Pal.SMALL, Pal.INK_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.custom_minimum_size = Vector2(520, 0)
+		_list.add_child(why)
 
 
 static func _time_of(r: Dictionary) -> String:
@@ -289,7 +365,8 @@ static func _time_of(r: Dictionary) -> String:
 
 
 ## `weights` are the column widths; `mine` highlights the player's own row.
-func _row(cells: Array, weights: Array, mine := false) -> void:
+## A `player` row is a button that opens their answers.
+func _row(cells: Array, weights: Array, mine := false, player := {}) -> HBoxContainer:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 10)
 	for i in cells.size():
@@ -298,7 +375,20 @@ func _row(cells: Array, weights: Array, mine := false) -> void:
 			c.add_theme_color_override("font_color", Pal.INFO_DEEP)
 			c.add_theme_color_override("font_shadow_color", Color(1, 1, 1, 0.6))
 		line.add_child(c)
-	_list.add_child(line)
+	if player.is_empty():
+		_list.add_child(line)
+		return line
+	var tap := Button.new()
+	tap.flat = true
+	tap.focus_mode = Control.FOCUS_NONE
+	tap.custom_minimum_size = Vector2(0, 26)
+	Ui.click(tap)
+	tap.pressed.connect(_show_answers.bind(player))
+	line.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tap.add_child(line)
+	_list.add_child(tap)
+	return line
 
 
 func _cell(text: String, weight: int, color: int = -1) -> Label:
@@ -311,6 +401,10 @@ func _cell(text: String, weight: int, color: int = -1) -> Label:
 
 
 func go_back() -> void:
+	if not _viewing.is_empty():
+		_viewing = {}
+		_fill()
+		return
 	for c in get_children():
 		if c.has_method("go_back"):
 			c.call("go_back")          # the all-time board, and its team panel

@@ -540,7 +540,8 @@ func _resync() -> void:
 func _on_scored(kind: String, flag: bool) -> void:
 	if Game.session_id != "" and kind != "station":
 		var item := Game.items_done - (1 if kind in ["answer", "skip"] else 0)
-		Scores.submit(kind, flag, Game.session_id, _on_score_reply, item, Game.current_station)
+		Scores.submit(kind, flag, Game.session_id, _on_score_reply, item, Game.current_station,
+			Game.last_answer if kind == "answer" else "")
 
 
 func _on_score_reply(reply: Dictionary) -> void:

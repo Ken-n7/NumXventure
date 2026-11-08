@@ -138,6 +138,21 @@ begin
   err := pg_temp.as_player(a,format('select public.finish_run(%L)',s));
   perform pg_temp.check(err='' and (select finished from public.members where session_id=s and profile_id=a),
     'a boundary restart can finish without any UI completion call',err);
+  -- The answer log: what was typed, read back only by this session's teacher.
+  s := '66666666-6666-6666-6666-666666666666';
+  err := pg_temp.as_player(a,format('select public.score_event(%L,%L,''answer'',false,0,0,''-8'')',s,gen_random_uuid()));
+  err := err || pg_temp.as_player(a,format('select public.score_event(%L,%L,''answer'',true,1,0)',s,gen_random_uuid()));
+  err := err || pg_temp.as_player('00000000-0000-0000-0000-00000000000a',format(
+    'create temp table seen as select * from public.member_answers(%L,%L)',s,a));
+  perform pg_temp.check(err='' and (select count(*)=2 from seen)
+    and (select answer='-8' and not correct from seen where item=0)
+    and (select answer is null and correct from seen where item=1),
+    'the session teacher reads each typed answer, old apps without one',err);
+  err := pg_temp.as_player(a,format('create temp table peek as select * from public.member_answers(%L,%L)',s,a));
+  err := err || pg_temp.as_player('00000000-0000-0000-0000-00000000000d',format(
+    'insert into peek select * from public.member_answers(%L,%L)',s,a));
+  perform pg_temp.check(err='' and not exists(select 1 from peek),
+    'players and other teachers read no answers',err);
   perform pg_temp.check((select jsonb_array_length(question_bank)=14 from public.sessions where id=s),
     'Start freezes the complete authored bank');
   update public.questions set prompt='Changed after Start',active=false;

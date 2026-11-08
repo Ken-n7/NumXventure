@@ -46,7 +46,7 @@ static func players(session_id: String) -> Array:
 
 static func players_result(session_id: String) -> Dictionary:
 	var got: Dictionary = await Net.rest(HTTPClient.METHOD_GET,
-		MEMBERS + "?select=gems,correct,items_done,finish_s,eliminated,profiles(username),teams(name),"
+		MEMBERS + "?select=profile_id,gems,correct,items_done,finish_s,eliminated,profiles(username),teams(name),"
 		+ "sessions(state,created_at,ends_at)&session_id=eq." + session_id
 		+ "&order=" + PLAYER_ORDER)
 	if got.error != "" or not (got.data is Array):
@@ -57,6 +57,7 @@ static func players_result(session_id: String) -> Dictionary:
 		var t: Variant = row.get("finish_s")
 		var team: Variant = row.get("teams")
 		out.append({
+			"profile_id": str(row.get("profile_id", "")),
 			"team": str((team as Dictionary).get("name", "—")) if team is Dictionary else "—",
 			"username": str((who as Dictionary).get("username", "?")) if who is Dictionary else "?",
 			"gems": int(row.get("gems", 0)),

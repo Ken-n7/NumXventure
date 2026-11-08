@@ -56,8 +56,8 @@ static func reset() -> void:
 ## Each queued operation keeps its request ID on EVERY retry. The server
 ## deduplicates it under the session lock; a read-before-retry cannot do that.
 static func submit(kind: String, flag: bool, session_id: String, done: Callable,
-		item := -1, station := -1) -> void:
-	var job := {"kind": kind, "flag": flag, "sid": session_id, "done": done,
+		item := -1, station := -1, answer := "") -> void:
+	var job := {"kind": kind, "flag": flag, "sid": session_id, "done": done, "answer": answer,
 		"event": Teams.uuid(), "user": Net.user_id, "generation": _generation,
 		"item": item if item >= 0 else int(_known.get("items_done", 0)),
 		"station": station if station >= 0 else int(_known.get("stations_done", 0))}
@@ -72,7 +72,8 @@ static func submit(kind: String, flag: bool, session_id: String, done: Callable,
 		var reply := {}
 		while _current(job):
 			reply = await _call("score_event", {"p_session": job.sid, "p_event": job.event,
-				"p_kind": job.kind, "p_flag": job.flag, "p_item": job.item, "p_station": job.station})
+				"p_kind": job.kind, "p_flag": job.flag, "p_item": job.item, "p_station": job.station,
+				"p_answer": job.answer if job.answer != "" else null})
 			if not _current(job) or not bool(reply.get("network", false)):
 				break
 			var tree := Engine.get_main_loop() as SceneTree

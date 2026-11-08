@@ -103,6 +103,9 @@ var hero_id := 1
 
 var leaderboard: Array = []   # [{name, gems}]
 var last_run: Dictionary = {}
+## What the player typed for the answer being scored; the server keeps it for
+## the Quest Keeper's per-player answers in History.
+var last_answer := ""
 
 
 ## Sheet for an adventurer. Kept here so every screen spells the path once.

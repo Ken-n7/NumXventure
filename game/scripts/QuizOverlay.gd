@@ -270,6 +270,7 @@ func _submit() -> void:
 		_flash_trouble("Type your answer first")
 		return
 	var ok := _matches(t, str(answer))
+	Game.last_answer = t
 	if ok:
 		Game.mark_correct()
 		Sfx.play("correct")

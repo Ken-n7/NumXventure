@@ -175,6 +175,22 @@ class Fixture(BaseHTTPRequestHandler):
             ERRORS.append(repr(error))
             self.reply(500, {"message": str(error)})
 
+    def do_POST(self):
+        # The answers of the screenshot's top player (profile 3, kai).
+        try:
+            assert self.path == "/rest/v1/rpc/member_answers", self.path
+            args = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            assert args == {"p_session": "screenshot", "p_profile": "3"}, args
+            self.reply(200, [
+                {"item": 0, "kind": "answer", "correct": True, "answer": "-2"},
+                {"item": 1, "kind": "answer", "correct": False, "answer": "-8"},
+                {"item": 1, "kind": "hint", "correct": False, "answer": None},
+                {"item": 2, "kind": "skip", "correct": False, "answer": None},
+                {"item": 8, "kind": "answer", "correct": True, "answer": None}])
+        except Exception as error:
+            ERRORS.append(repr(error))
+            self.reply(500, {"message": str(error)})
+
     def reply(self, status, body):
         payload = json.dumps(body).encode()
         self.send_response(status)
@@ -358,11 +374,23 @@ func _ready() -> void:
     screen.add_child(list)
     screen.set("_list", list)
     screen.set("_sid", "screenshot")
+    screen.set("_tab", 1)
     await screen._fill_players()
     for i in 3:
-        var cells: Array = list.get_child(i + 1).get_children().map(func(label: Label) -> String: return label.text)
+        var cells: Array = list.get_child(i + 1).get_child(0).get_children().map(func(label: Label) -> String: return label.text)
         var expected_row: Array = [["1", "kai", "Team kai", "220", "14", "02:56"], ["2", "missu", "Team missu", "220", "14", "04:18"], ["3", "nessa", "Team nessa", "220", "14", "04:20"]][i]
         check("displayed screenshot row %d" % (i + 1), cells == expected_row)
+    (list.get_child(1) as Button).pressed.emit()
+    check("a player's row opens their answers", await wait_text(screen, "kai · Team kai · 220 gems"))
+    var rows: Array = list.get_children().filter(func(n: Node) -> bool: return n is HBoxContainer) \
+        .map(func(n: Node) -> Array: return n.get_children().map(func(l: Label) -> String: return l.text))
+    check("answers list every item under its station", rows.size() == 15 and texts(screen).has("Station 3"))
+    check("typed answer and result per item", rows.slice(1, 4) == [["1", "-2", "Correct"], ["2", "-8", "Wrong · hint"], ["3", "—", "Skipped"]])
+    check("an unreached item stays blank", rows[5] == ["5", "—", "—"])
+    check("an old app's answer says it was not recorded", rows[9] == ["9", "—", "Correct"]
+        and texts(screen).any(func(t: String) -> bool: return t.begins_with("Typed answers are saved")))
+    screen.go_back()
+    check("back returns to the ranking", await wait_text(screen, "Tap a player to see their answers."))
     check("DNF still displays correctly", screen._time_of({"finish_s": -1, "eliminated": false, "over": true}) == "DNF")
     check("eliminated still displays Out", screen._time_of({"finish_s": -1, "eliminated": true, "over": true}) == "Out")
     check("in-progress still displays a dash", screen._time_of({"finish_s": -1, "eliminated": false, "over": false}) == "—")

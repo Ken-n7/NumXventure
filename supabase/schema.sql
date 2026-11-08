@@ -557,11 +557,18 @@ create table if not exists numxventure_private.score_events (
   primary key (session_id, profile_id, event_id)
 );
 alter table numxventure_private.score_events enable row level security;
+-- What the student typed rides along on an answer (client, 2026-11-08: the
+-- Quest Keeper reads each player's answers per station in History). Optional,
+-- so older apps still score. The old six-argument function is dropped first:
+-- beside a seven-argument one with a default, its calls would be ambiguous.
+drop function if exists public.score_event(uuid, uuid, text, boolean, int, int);
 create or replace function public.score_event(p_session uuid, p_event uuid,
-  p_kind text, p_flag boolean, p_item int, p_station int)
+  p_kind text, p_flag boolean, p_item int, p_station int, p_answer text default null)
 returns public.members language plpgsql security definer set search_path = '' as $$
 declare m public.members; saved jsonb;
-  payload jsonb := jsonb_build_object('kind', p_kind, 'flag', p_flag, 'item', p_item, 'station', p_station);
+  payload jsonb := jsonb_build_object('kind', p_kind, 'flag', p_flag, 'item', p_item, 'station', p_station)
+    || case when p_answer is null then '{}'::jsonb
+            else jsonb_build_object('answer', left(p_answer, 40)) end;
 begin
   perform numxventure_private.lock_session(p_session);
   select * into m from public.members where session_id = p_session and profile_id = auth.uid();
@@ -590,8 +597,28 @@ begin
   insert into numxventure_private.score_events values (p_session, auth.uid(), p_event, payload);
   return m;
 end $$;
-revoke all on function public.score_event(uuid, uuid, text, boolean, int, int) from public, anon;
-grant execute on function public.score_event(uuid, uuid, text, boolean, int, int) to authenticated;
+revoke all on function public.score_event(uuid, uuid, text, boolean, int, int, text) from public, anon;
+grant execute on function public.score_event(uuid, uuid, text, boolean, int, int, text) to authenticated;
+
+-- One player's items, for the Quest Keeper who hosted the session only:
+-- answer/skip/hint per circle (0-13), oldest first. `answer` is null before the
+-- app sent it, so older sessions show right or wrong without what was typed.
+create or replace function public.member_answers(p_session uuid, p_profile uuid)
+returns table (item int, kind text, correct boolean, answer text)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  -- plpgsql, not sql: owns_session is defined further down this file.
+  if not public.owns_session(p_session) then return; end if;
+  return query
+  select (e.payload->>'item')::int, e.payload->>'kind', (e.payload->>'flag')::boolean,
+         e.payload->>'answer'
+    from numxventure_private.score_events e
+   where e.session_id = p_session and e.profile_id = p_profile
+     and e.payload->>'kind' in ('answer', 'skip', 'hint')
+   order by 1, 2;
+end $$;
+revoke all on function public.member_answers(uuid, uuid) from public, anon;
+grant execute on function public.member_answers(uuid, uuid) to authenticated;
 
 -- 4c. Picking a team ---------------------------------------------------------
 -- Students pick their own team in the lobby and may switch until the teacher

@@ -24,6 +24,7 @@ var items_done := 0
 var gems := 50
 var applied := 0
 var answer_posts := 0
+var last_args := {}
 var _events := {}
 var _score_ids: Array[String] = []
 ## Apply the next answer, then hang up without replying.
@@ -103,6 +104,19 @@ func _ready() -> void:
 	check("...the retry keeps the same request ID", answer_posts == 2 and _score_ids[0] == _score_ids[1], str(_score_ids))
 	check("...and the board gets the server's row", lost.size() == 1
 		and int((lost[0].get("row", {}) as Dictionary).get("items_done", 0)) == 2, str(lost))
+	check("...an answer without typing sends no typed answer", last_args.has("p_answer")
+		and last_args.p_answer == null, str(last_args))
+
+	# What the student typed reaches the server once, for the teacher's History.
+	Game.last_answer = "-8"
+	Scores.submit("answer", false, "sid-test", func(_r: Dictionary) -> void: pass, 2, 0,
+		Game.take_answer())
+	for i in 20:
+		await _wait(0.25)
+		if Scores.pending() == 0:
+			break
+	check("the typed answer is sent with its score", str(last_args.get("p_answer")) == "-8", str(last_args))
+	check("...and taken once, never resent for the next item", Game.take_answer() == "")
 	stateful = false
 
 	# --- The live connection keeps trying ----------------------------------------
@@ -396,6 +410,7 @@ func _process(_delta: float) -> void:
 			if first_line.begins_with("POST") and first_line.contains("score_event"):
 				answer_posts += 1
 				var args: Dictionary = JSON.parse_string(text.substr(head_end + 4))
+				last_args = args
 				var event := str(args.get("p_event", ""))
 				_score_ids.append(event)
 				if not _events.has(event):

@@ -108,6 +108,14 @@ var last_run: Dictionary = {}
 var last_answer := ""
 
 
+## The typed answer, once: an answer scored without typing (the dev panel's
+## Skip Station) must not resend the previous item's.
+func take_answer() -> String:
+	var t := last_answer
+	last_answer = ""
+	return t
+
+
 ## Sheet for an adventurer. Kept here so every screen spells the path once.
 static func hero_sheet(id: int) -> String:
 	return "res://assets/characters/character_%d.png" % id

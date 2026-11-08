@@ -133,6 +133,8 @@ func _watch() -> void:
 			return
 		# One player's answers only refetch on that player's own score.
 		if _viewing.is_empty() or str(r.get("profile_id", "")) == str(_viewing.profile_id):
+			if not _viewing.is_empty():
+				_viewing.gems = int(r.get("gems", _viewing.gems))
 			_fill())
 	rt.watch("members", "session_id=eq." + _sid)
 
